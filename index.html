@@ -1,0 +1,2533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MachLab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* layout: flow view and live results on the left, case setup on the right; one column on phones */
+  --bg:#eef1f4; --panel:#ffffff; --ink:#14202b; --muted:#5a6875; --line:#d5dce3; --accent:#0a6a8c; --accent-ink:#ffffff;
+  --body:#b8c2cc; --good:#1f7a4d; --warn:#9a6200; --crit:#b3261e; --series:#0a6a8c;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0d1318; --panel:#151d25; --ink:#e4ebf1; --muted:#8a99a7; --line:#28333e; --accent:#52b7d8; --accent-ink:#06222c;
+  --body:#3b4753; --good:#5cc48e; --warn:#e0a84a; --crit:#f0786f; --series:#52b7d8; color-scheme:dark; } }
+:root[data-theme="dark"]{
+  --bg:#0d1318; --panel:#151d25; --ink:#e4ebf1; --muted:#8a99a7; --line:#28333e; --accent:#52b7d8; --accent-ink:#06222c;
+  --body:#3b4753; --good:#5cc48e; --warn:#e0a84a; --crit:#f0786f; --series:#52b7d8; color-scheme:dark; }
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--sans);-webkit-text-size-adjust:100%}
+.wrap{max-width:1280px;margin:0 auto;padding:16px;display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:980px){ .wrap{grid-template-columns:minmax(0,1fr) 360px;align-items:start} header{grid-column:1/-1} }
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+h1{font-size:20px;font-weight:600;margin:0;letter-spacing:-.01em}
+header p{margin:0;color:var(--muted);font-size:13px}
+.col{display:grid;gap:14px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;min-width:0}
+h2{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
+.viewbox{position:relative;border-radius:8px;overflow:hidden;background:var(--bg);aspect-ratio:4/3}
+@media (min-width:700px){ .viewbox{aspect-ratio:16/9} }
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.bar .grow{flex:1 1 auto}
+select,input[type=number],input[type=text],textarea{font:14px var(--sans);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:7px 8px;min-width:0;width:100%}
+textarea{font:12px/1.35 var(--mono);min-height:110px;resize:vertical}
+select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.bar select{width:auto}
+button{font:500 14px var(--sans);color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:8px 12px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+.pill{font:500 12px var(--mono);padding:3px 9px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.pill.run{color:var(--good)} .pill.idle{color:var(--muted)} .pill.bad{color:var(--crit)} .pill.ok{color:var(--accent)}
+.legend{display:grid;grid-template-columns:auto minmax(60px,1fr) auto;gap:8px;align-items:center;margin-top:8px;font:12px var(--mono);color:var(--muted)}
+#cbar{height:10px;border-radius:5px;border:1px solid var(--line)}
+.replay{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.replay input[type=range]{flex:1 1 160px;min-width:120px;accent-color:var(--accent)}
+.replay select{width:auto}
+.replay .rt{font:12px var(--mono);color:var(--muted);flex:1 1 100%}
+.status{font:12px var(--mono);color:var(--muted);margin-top:6px;min-height:17px;overflow-wrap:anywhere}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px}
+.tile{border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+.tile b{display:block;font:500 18px var(--mono);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.tile span{font-size:12px;color:var(--muted)} .tile small{display:block;font:11px var(--mono);color:var(--muted);min-height:14px}
+.charts{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+.chart h3{font-size:13px;font-weight:500;margin:0 0 2px;display:flex;justify-content:space-between;gap:8px}
+.chart h3 em{font:12px var(--mono);color:var(--muted);font-style:normal}
+.chart canvas{width:100%;height:150px;display:block;touch-action:pan-y}
+form{display:grid;gap:10px}
+details{border-top:1px solid var(--line);padding-top:8px}
+details:first-of-type{border-top:0;padding-top:0}
+summary{font-weight:600;font-size:14px;cursor:pointer;padding:2px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;margin-top:8px}
+label{display:grid;gap:3px;font-size:12px;color:var(--muted);min-width:0}
+label.full{grid-column:1/-1}
+label.chk{display:flex;gap:8px;align-items:center;color:var(--ink);font-size:13px;grid-column:1/-1}
+label.chk input{width:auto}
+.derived{font:12px/1.5 var(--mono);color:var(--muted);margin-top:8px;overflow-wrap:anywhere}
+.note{font-size:12px;color:var(--muted);margin:6px 0 0}
+.err{color:var(--crit);font-size:13px;min-height:0}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+#csvbox{display:none;margin-top:8px}
+.about{font-size:13px;color:var(--muted)} .about p{margin:0 0 6px;max-width:70ch}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>MachLab</h1>
+  <p>Compressible Reynolds-averaged Navier–Stokes, solved in this browser tab. Far field set by static pressure and Mach number.</p>
+</header>
+
+<div class="col">
+  <section class="panel">
+    <div class="bar">
+      <button id="run" class="primary" type="button">Run</button>
+      <button id="step" type="button">Advance one step</button>
+      <span id="pill" class="pill idle">Paused</span>
+      <span class="grow"></span>
+      <select id="field" aria-label="Field shown">
+        <option value="mach">Mach number</option>
+        <option value="vort">Vorticity ωc/U∞</option>
+        <option value="cp">Pressure coefficient</option>
+        <option value="vel">Speed |V|/U∞</option>
+        <option value="mut">Eddy viscosity μt/μ</option>
+        <option value="rho">Density ρ/ρ∞</option>
+        <option value="tem">Temperature T/T∞</option>
+      </select>
+      <button id="meshbtn" type="button" aria-pressed="false">Mesh</button>
+      <button id="fit" type="button">Reset view</button>
+    </div>
+    <div class="viewbox"><canvas id="gl" aria-label="Flow field around the body. Drag to pan, pinch or scroll to zoom."></canvas></div>
+    <div class="legend"><span id="cmin">0</span><div id="cbar"></div><span id="cmax">1</span></div>
+    <div class="replay">
+      <button id="rmode" type="button" aria-pressed="false">Replay</button>
+      <button id="rplay" type="button" disabled>Play</button>
+      <input id="rpos" type="range" min="0" max="1000" value="1000" step="1" aria-label="Replay position" disabled>
+      <select id="rspeed" aria-label="Replay speed">
+        <option value="0.25">0.25 tU∞/c per second</option><option value="0.5">0.5 per second</option><option value="1">1 per second</option><option value="2">2 per second</option><option value="5" selected>5 per second</option><option value="10">10 per second</option><option value="25">25 per second</option>
+      </select>
+      <select id="rrange" aria-label="Replay range">
+        <option value="1">Whole run</option><option value="0.5">Last half</option><option value="0.25">Last quarter</option>
+      </select>
+      <button id="xgif" type="button" hidden>Save GIF</button>
+      <button id="xvid" type="button" hidden>Save video</button>
+      <span class="rt" id="xmsg" role="status" hidden></span>
+      <span class="rt" id="rinfo">Frames are recorded while an unsteady run advances.</span>
+    </div>
+    <div class="status" id="status" role="status"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Forces and state</h2>
+    <div class="tiles">
+      <div class="tile"><span>Lift coefficient</span><b id="tcl">–</b><small id="tclf"></small></div>
+      <div class="tile"><span>Drag coefficient</span><b id="tcd">–</b><small id="tcdf"></small></div>
+      <div class="tile"><span>Moment, ¼ chord</span><b id="tcm">–</b><small>nose-up positive</small></div>
+      <div class="tile"><span id="ttl">Time tU∞/c</span><b id="tt">0</b><small id="tts"></small></div>
+      <div class="tile"><span>Strouhal number</span><b id="tst">–</b><small>from lift history</small></div>
+      <div class="tile"><span>Wall y⁺, max</span><b id="typ">–</b><small id="tyh"></small></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>History and surface loads</h2>
+    <div class="charts">
+      <div class="chart"><h3>Lift coefficient <em id="h_cl"></em></h3><canvas id="c_cl"></canvas></div>
+      <div class="chart"><h3>Drag coefficient <em id="h_cd"></em></h3><canvas id="c_cd"></canvas></div>
+      <div class="chart"><h3>Density residual, log₁₀ <em id="h_res"></em></h3><canvas id="c_res"></canvas></div>
+      <div class="chart"><h3>Surface pressure, −Cp against x/c <em id="h_cp"></em></h3><canvas id="c_cp"></canvas></div>
+      <div class="chart"><h3>Skin friction Cf against x/c <em id="h_cf"></em></h3><canvas id="c_cf"></canvas></div>
+    </div>
+    <div class="actions" style="margin-top:10px">
+      <button id="copyh" type="button">Copy force history as CSV</button>
+      <button id="copys" type="button">Copy surface data as CSV</button>
+      <button id="dlh" type="button" hidden>Download force history</button>
+      <button id="dls" type="button" hidden>Download surface data</button>
+      <span class="note" id="copymsg" role="status" style="align-self:center;margin:0"></span>
+    </div>
+    <textarea id="csvbox" aria-label="CSV data" readonly></textarea>
+  </section>
+</div>
+
+<div class="col">
+  <section class="panel">
+    <h2>Case setup</h2>
+    <form id="setup" autocomplete="off">
+      <label>Example case
+        <select id="preset">
+          <option value="cylT">Cylinder, turbulent vortex shedding</option>
+          <option value="naca">NACA 0012, Mach 0.3, 6° incidence</option>
+          <option value="stall">NACA 4412, 20° incidence, separated</option>
+          <option value="trans">NACA 0012, transonic Mach 0.8, adaptive mesh</option>
+          <option value="cylL">Cylinder, laminar Re 150, adaptive wake</option>
+          <option value="sup">Cylinder, Mach 2 bow shock, adaptive mesh</option>
+        </select>
+      </label>
+
+      <details open>
+        <summary>Far field</summary>
+        <div class="grid">
+          <label>Static pressure p∞, Pa<input id="pinf" type="number" step="any" value="101325"></label>
+          <label>Mach number M∞<input id="mach" type="number" step="any" value="0.2"></label>
+          <label>Static temperature T∞, K<input id="tinf" type="number" step="any" value="288.15"></label>
+          <label>Angle of attack, deg<input id="alpha" type="number" step="any" value="0"></label>
+          <label class="full">Reference length (chord or diameter), m<input id="chord" type="number" step="any" value="0.1"></label>
+          <label class="chk"><input id="reov" type="checkbox">Set Reynolds number directly</label>
+          <label class="full" id="rewrap" hidden>Reynolds number<input id="reval" type="number" step="any" value="150"></label>
+        </div>
+        <div class="derived" id="derived"></div>
+      </details>
+
+      <details open>
+        <summary>Body</summary>
+        <div class="grid">
+          <label class="full">Shape
+            <select id="gtype"><option value="cylinder">Circular cylinder</option><option value="naca">NACA 4-digit airfoil</option><option value="ellipse">Ellipse</option><option value="custom">Custom coordinates</option></select>
+          </label>
+          <label class="full" id="w_naca" hidden>NACA code<input id="naca" type="text" inputmode="numeric" value="0012" maxlength="4"></label>
+          <label class="full" id="w_ell" hidden>Thickness ratio<input id="ethick" type="number" step="any" value="0.25"></label>
+          <label class="full" id="w_cus" hidden>Coordinates, one “x y” pair per line, in order around the body
+            <textarea id="coords" placeholder="1.0000  0.0000&#10;0.9500  0.0120&#10;…"></textarea></label>
+        </div>
+      </details>
+
+      <details open>
+        <summary>Model and time stepping</summary>
+        <div class="grid">
+          <label class="full">Viscous model
+            <select id="model"><option value="sa">URANS, Spalart–Allmaras</option><option value="lam">Laminar Navier–Stokes</option></select></label>
+          <label class="full">Time integration
+            <select id="mode"><option value="u">Unsteady, second-order dual time stepping</option><option value="s">Steady, local time stepping</option></select></label>
+          <label>Time step ΔtU∞/c<input id="dt" type="number" step="any" value="0.03"></label>
+          <label>Inner iterations, max<input id="inner" type="number" step="1" value="8"></label>
+          <label>Inner residual drop<input id="tol" type="number" step="any" value="0.03"></label>
+          <label>Pseudo-time CFL<input id="cfl" type="number" step="any" value="1000"></label>
+        </div>
+        <p class="note">Time-stepping settings take effect immediately, without a restart.</p>
+      </details>
+
+      <details open>
+        <summary>Mesh</summary>
+        <div class="grid">
+          <label class="full">Mesh type
+            <select id="mtype"><option value="o">Static O-mesh</option><option value="amr">Adaptive: O-layers plus splitting squares</option></select></label>
+          <label class="full">Resolution
+            <select id="res"><option value="112x52">Coarse, 112 around the body</option><option value="160x72">Medium, 160 around the body</option><option value="224x96">Fine, 224 around the body</option></select></label>
+          <label>Far-field distance, chords<input id="rad" type="number" step="any" value="25"></label>
+          <label>Target wall y⁺<input id="yp" type="number" step="any" value="1"></label>
+        </div>
+        <div class="grid" id="amrbox" hidden>
+          <label class="full">Refinement criterion
+            <select id="sensor"><option value="rho">Density gradient: shocks and expansions</option><option value="p">Pressure gradient: shocks</option><option value="vort">Vorticity: wakes and shear layers</option><option value="both">Density gradient and vorticity</option></select></label>
+          <label>Split threshold<input id="thr" type="number" step="any" value="0.03"></label>
+          <label>Refinement levels<input id="lev" type="number" step="1" min="0" max="4" value="2"></label>
+          <label>Adapt every, steps<input id="aevery" type="number" step="1" min="1" value="5"></label>
+          <label>Square limit<input id="maxq" type="number" step="500" value="14000"></label>
+          <label>Wake zone length, chords<input id="wake" type="number" step="any" value="8"></label>
+          <label>O-layer thickness, chords<input id="margin" type="number" step="any" value="0"></label>
+        </div>
+        <p class="note" id="amrnote" hidden>A square splits in four when cell size × gradient exceeds the threshold, and four siblings merge when all fall below a quarter of it. The O-layers are thin and wall-normal, about one and a half boundary-layer thicknesses when the thickness is left at 0, and the squares are cut to fit their outer edge. Columns of the O-layers split in two along the body where the streamwise jump is three times that threshold, with each new wall point placed on the true body outline, so a shock stays sharp down to the surface. Criterion, threshold, levels and interval apply immediately; the square limit, wake zone and layer thickness need a rebuild. Inside the wake zone, a band trailing downstream of the body, squares never grow beyond twice the size at the O-layer edge; set its length to 0 to switch it off. Steady runs adapt every ten times the interval.</p>
+        <div class="derived" id="meshinfo"></div>
+      </details>
+
+      <div class="err" id="err" role="alert"></div>
+      <div class="actions">
+        <button class="primary" id="build" type="submit">Build mesh and restart</button>
+        <button id="keep" type="button">Apply far field, keep flow</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel about">
+    <h2>Method</h2>
+    <p id="hw"></p>
+    <p id="hw2">Checking whether the graphics processor can be used for computing…</p>
+    <p>Cell-centred finite volume on a body-fitted O-mesh, or on thin wall-normal O-layers inside a quadtree of squares that are cut to fit the layers' outer edge. On the adaptive mesh both parts refine as the flow develops: squares split in four, and O-layer columns split along the body. HLLC fluxes with second-order MUSCL reconstruction and a van Albada limiter; central viscous fluxes; Sutherland viscosity; adiabatic no-slip wall.</p>
+    <p>Turbulence uses the one-equation Spalart–Allmaras model, fully turbulent. Time accuracy comes from BDF2 with implicit inner iterations: block-tridiagonal solves along wall-normal lines and Gauss–Seidel sweeps around the body.</p>
+    <p>On the adaptive mesh the inner iterations use the true wave speeds where the flow is slow and smooth, which lets a low-Mach time step converge in about two thirds of the iterations it used to need.</p>
+    <p>The outer boundary applies one-dimensional Riemann invariants built from p∞, M∞, T∞ and the flow angle, so waves leave without reflecting. Below about Mach 0.1 the scheme turns slow and diffusive.</p>
+  </section>
+</div>
+</div>
+
+<script>
+/* 2D compressible URANS finite-volume solver on a body-fitted O-mesh.
+   Non-dimensional: rho_inf = 1, a_inf = 1, length = chord  =>  p_inf = 1/gamma, |V_inf| = Mach. */
+var CFD = (function () {
+  'use strict';
+  var GAM = 1.4, GM1 = GAM - 1, PR = 0.72, PRT = 0.9;
+  var CB1 = 0.1355, CB2 = 0.622, SIG = 2 / 3, KAP = 0.41, CW2 = 0.3, CW3 = 2.0, CV1 = 7.1;
+  var CW1 = CB1 / (KAP * KAP) + (1 + CB2) / SIG, CW36 = Math.pow(CW3, 6), CV13 = CV1 * CV1 * CV1;
+
+  /* ---------------- geometry ---------------- */
+  function parseNaca(code) {
+    var s = String(code).replace(/\D/g, '');
+    if (s.length !== 4) throw new Error('NACA code needs 4 digits, for example 0012 or 2412.');
+    var t = +s.slice(2) / 100;
+    if (t < 0.02) throw new Error('NACA thickness must be at least 02.');
+    return { m: +s[0] / 100, p: +s[1] / 10, t: t };
+  }
+
+  function parseCoords(text) {
+    var xs = [], ys = [];
+    String(text).split(/\r?\n/).forEach(function (line) {
+      var q = line.trim().split(/[\s,;]+/);
+      if (q.length >= 2) {
+        var a = Number(q[0]), b = Number(q[1]);
+        if (q[0] !== '' && isFinite(a) && isFinite(b)) { xs.push(a); ys.push(b); }
+      }
+    });
+    if (xs.length < 12) throw new Error('Custom shape needs at least 12 coordinate pairs (x y per line, around the body).');
+    var xmin = Infinity, xmax = -Infinity, i;
+    for (i = 0; i < xs.length; i++) { if (xs[i] < xmin) xmin = xs[i]; if (xs[i] > xmax) xmax = xs[i]; }
+    var c = xmax - xmin;
+    if (!(c > 0)) throw new Error('Custom shape has zero chord.');
+    for (i = 0; i < xs.length; i++) { xs[i] = (xs[i] - xmin) / c; ys[i] = ys[i] / c; }
+    return { x: xs, y: ys };
+  }
+
+  function bodyPolyline(geo) {
+    var px = [], py = [], k, K, th;
+    if (geo.type === 'naca') {
+      var n = parseNaca(geo.naca), m = n.m, p = n.p, t = n.t;
+      K = 1600;
+      for (k = 0; k < K; k++) {
+        th = 2 * Math.PI * k / K;
+        var x = 0.5 * (1 + Math.cos(th));
+        var yt = 5 * t * (0.2969 * Math.sqrt(x) - 0.1260 * x - 0.3516 * x * x + 0.2843 * x * x * x - 0.1036 * x * x * x * x);
+        var yc = 0, dy = 0;
+        if (m > 0 && p > 0) {
+          if (x < p) { yc = m / (p * p) * (2 * p * x - x * x); dy = 2 * m / (p * p) * (p - x); }
+          else { yc = m / ((1 - p) * (1 - p)) * (1 - 2 * p + 2 * p * x - x * x); dy = 2 * m / ((1 - p) * (1 - p)) * (p - x); }
+        }
+        var a = Math.atan(dy);
+        if (th < Math.PI) { px.push(x - yt * Math.sin(a)); py.push(yc + yt * Math.cos(a)); }
+        else { px.push(x + yt * Math.sin(a)); py.push(yc - yt * Math.cos(a)); }
+      }
+    } else if (geo.type === 'cylinder' || geo.type === 'ellipse') {
+      var b = geo.type === 'cylinder' ? 0.5 : 0.5 * Math.max(0.03, Math.min(1, geo.thickness));
+      K = 1440;
+      for (k = 0; k < K; k++) { th = 2 * Math.PI * k / K; px.push(0.5 + 0.5 * Math.cos(th)); py.push(b * Math.sin(th)); }
+    } else {
+      var pc = parseCoords(geo.coords), X = pc.x, Y = pc.y, np = X.length, sub = 8, i, s;
+      for (i = 0; i < np - 1; i++) {           // Catmull-Rom, open curve first -> last point
+        var i0 = Math.max(i - 1, 0), i3 = Math.min(i + 2, np - 1);
+        for (s = 0; s < sub; s++) {
+          var u = s / sub, u2 = u * u, u3 = u2 * u;
+          px.push(0.5 * (2 * X[i] + (-X[i0] + X[i + 1]) * u + (2 * X[i0] - 5 * X[i] + 4 * X[i + 1] - X[i3]) * u2 + (-X[i0] + 3 * X[i] - 3 * X[i + 1] + X[i3]) * u3));
+          py.push(0.5 * (2 * Y[i] + (-Y[i0] + Y[i + 1]) * u + (2 * Y[i0] - 5 * Y[i] + 4 * Y[i + 1] - Y[i3]) * u2 + (-Y[i0] + 3 * Y[i] - 3 * Y[i + 1] + Y[i3]) * u3));
+        }
+      }
+      var gap = Math.hypot(X[np - 1] - X[0], Y[np - 1] - Y[0]);
+      if (gap > 1e-7) {                         // open / blunt trailing edge: close with a straight base
+        var nb = Math.max(2, Math.ceil(gap / 0.0005));
+        for (s = 0; s < nb; s++) { px.push(X[np - 1] + (X[0] - X[np - 1]) * s / nb); py.push(Y[np - 1] + (Y[0] - Y[np - 1]) * s / nb); }
+      }
+    }
+    // remove repeated points, force clockwise order (so that i x j is right-handed with j pointing away from the body)
+    var qx = [], qy = [];
+    for (k = 0; k < px.length; k++) {
+      var kn = (k + 1) % px.length;
+      if (Math.hypot(px[kn] - px[k], py[kn] - py[k]) > 1e-10) { qx.push(px[k]); qy.push(py[k]); }
+    }
+    var area = 0, M = qx.length;
+    for (k = 0; k < M; k++) { var k1 = (k + 1) % M; area += qx[k] * qy[k1] - qx[k1] * qy[k]; }
+    if (area > 0) { qx.reverse(); qy.reverse(); }
+    return { x: qx, y: qy };
+  }
+
+  /* distribute Ni surface nodes, clustered where the surface turns (leading edge, trailing edge) */
+  function distributeSurface(poly, Ni, clusterA) {
+    var px = poly.x, py = poly.y, M = px.length, k;
+    var cum = new Float64Array(M + 1), turn = new Float64Array(M);
+    for (k = 0; k < M; k++) { var k1 = (k + 1) % M; cum[k + 1] = cum[k] + Math.hypot(px[k1] - px[k], py[k1] - py[k]); }
+    var L = cum[M], maxTurn = 0, kMax = 0;
+    for (k = 0; k < M; k++) {
+      var km = (k + M - 1) % M, kp = (k + 1) % M;
+      var ax = px[k] - px[km], ay = py[k] - py[km], bx = px[kp] - px[k], by = py[kp] - py[k];
+      turn[k] = Math.abs(Math.atan2(ax * by - ay * bx, ax * bx + ay * by));
+      if (turn[k] > maxTurn) { maxTurn = turn[k]; kMax = k; }
+    }
+    var K = 4000, ds = L / K, kap = new Float64Array(K), b;
+    for (k = 0; k < M; k++) { b = Math.min(K - 1, Math.floor(cum[k] / ds)); kap[b] += turn[k] / ds; }
+    var sg = 0.02 / ds, hw = Math.ceil(3 * sg), ker = new Float64Array(2 * hw + 1), ks = 0, q;
+    for (q = -hw; q <= hw; q++) { ker[q + hw] = Math.exp(-0.5 * q * q / (sg * sg)); ks += ker[q + hw]; }
+    var w = new Float64Array(K), W = new Float64Array(K + 1);
+    for (b = 0; b < K; b++) {
+      var s = 0;
+      for (q = -hw; q <= hw; q++) s += ker[q + hw] * kap[((b + q) % K + K) % K];
+      w[b] = 1 + clusterA * Math.min(s / ks, 60);
+    }
+    var start = maxTurn > 0.6 ? cum[kMax] : 0;
+    var b0 = Math.round(start / ds) % K;
+    for (b = 0; b < K; b++) W[b + 1] = W[b] + w[(b0 + b) % K];
+    var sx = new Float64Array(Ni), sy = new Float64Array(Ni), jb = 0, jp = 0;
+    for (var i = 0; i < Ni; i++) {
+      var target = W[K] * i / Ni;
+      while (jb < K - 1 && W[jb + 1] < target) jb++;
+      var arc = (b0 * ds + (jb + (target - W[jb]) / (W[jb + 1] - W[jb])) * ds) % L;
+      if (i === 0 && maxTurn > 0.6) arc = cum[kMax];
+      if (arc < cum[jp]) jp = 0;
+      while (jp < M - 1 && cum[jp + 1] < arc) jp++;
+      var f = (arc - cum[jp]) / Math.max(cum[jp + 1] - cum[jp], 1e-300), jn = (jp + 1) % M;
+      sx[i] = px[jp] + f * (px[jn] - px[jp]); sy[i] = py[jp] + f * (py[jn] - py[jp]);
+    }
+    return { x: sx, y: sy };
+  }
+
+  function radialSpacing(h0, R, Nj) {
+    var y0 = 0.02;
+    function run(g, rb) {
+      var y = 0, hg = h0, hs = new Float64Array(Nj);
+      for (var j = 0; j < Nj; j++) { var h = Math.min(hg, Math.max(h0, g * (y + y0))); hs[j] = h; y += h; hg *= rb; }
+      return { y: y, hs: hs };
+    }
+    var lo, hi, mid, it;
+    if (run(1e9, 1.2).y < R) {
+      lo = 1.2; hi = 4;
+      for (it = 0; it < 60; it++) { mid = 0.5 * (lo + hi); if (run(1e9, mid).y < R) lo = mid; else hi = mid; }
+      return { hs: run(1e9, hi).hs, growth: hi };
+    }
+    lo = 0; hi = 10;
+    for (it = 0; it < 60; it++) { mid = 0.5 * (lo + hi); if (run(mid, 1.2).y < R) lo = mid; else hi = mid; }
+    return { hs: run(hi, 1.2).hs, growth: Math.min(1.2, 1 + hi) };
+  }
+
+  /* first cell height (in chords) for a target y+ at the first cell centre */
+  /* thickness of the body-fitted layers on the adaptive mesh: about one and a half boundary-layer thicknesses */
+  function layerThickness(Re, turbulent) { return Math.min(0.1, Math.max(0.02, turbulent ? 0.55 * Math.pow(Re, -0.2) : 6 / Math.sqrt(Re))); }
+  function firstCellHeight(Re, turbulent, yplus) {
+    if (!turbulent) return Math.min(0.006, Math.max(2e-4, 0.1 / Math.sqrt(Re)));
+    var cf = 0.026 / Math.pow(Re, 1 / 7);
+    return Math.min(0.004, 2 * yplus / (Re * Math.sqrt(cf / 2)));
+  }
+
+  var SMK = 1;                                  // smoothing multiplier, raised when a mesh folds
+  function retry(fn, geo, m) { var err; for (var k = 1; k <= 8; k *= 2) { SMK = k; try { var r = fn(geo, m); SMK = 1; return r; } catch (e) { err = e; if (!/folded/.test(e.message)) break; } } SMK = 1; throw err; }
+  function buildMesh(geo, m) {
+    var Ni = m.Ni, Nj = m.Nj, i, j, it;
+    var surf = distributeSurface(bodyPolyline(geo), Ni, m.cluster === undefined ? 0.3 : m.cluster);
+    var sp = radialSpacing(m.h0, m.radius, Nj), hs = sp.hs;
+    var x = new Float64Array(Ni * (Nj + 1)), y = new Float64Array(Ni * (Nj + 1));
+    x.set(surf.x, 0); y.set(surf.y, 0);
+    var nx = new Float64Array(Ni), ny = new Float64Array(Ni), tx = new Float64Array(Ni), ty = new Float64Array(Ni), wk = new Float64Array(Ni);
+    for (j = 0; j < Nj; j++) {
+      var o = j * Ni, o2 = o + Ni, h = hs[j];
+      for (i = 0; i < Ni; i++) {
+        var ip = (i + 1) % Ni, im = (i + Ni - 1) % Ni;
+        var dx = x[o + ip] - x[o + im], dy = y[o + ip] - y[o + im], d = Math.hypot(dx, dy) || 1;
+        nx[i] = -dy / d; ny[i] = dx / d;
+      }
+      var npass = SMK * (2 + Math.min(12, j >> 2));
+      for (it = 0; it < npass; it++) {
+        for (i = 0; i < Ni; i++) {
+          ip = (i + 1) % Ni; im = (i + Ni - 1) % Ni;
+          tx[i] = nx[i] + 0.25 * (nx[im] - 2 * nx[i] + nx[ip]); ty[i] = ny[i] + 0.25 * (ny[im] - 2 * ny[i] + ny[ip]);
+        }
+        for (i = 0; i < Ni; i++) { d = Math.hypot(tx[i], ty[i]) || 1; nx[i] = tx[i] / d; ny[i] = ty[i] / d; }
+      }
+      for (i = 0; i < Ni; i++) { x[o2 + i] = x[o + i] + h * nx[i]; y[o2 + i] = y[o + i] + h * ny[i]; }
+      var pp = SMK * (1 + Math.min(6, j >> 3));
+      for (it = 0; it < pp; it++) {
+        for (i = 0; i < Ni; i++) {
+          ip = (i + 1) % Ni; im = (i + Ni - 1) % Ni;
+          var dsl = 0.5 * (Math.hypot(x[o2 + ip] - x[o2 + i], y[o2 + ip] - y[o2 + i]) + Math.hypot(x[o2 + im] - x[o2 + i], y[o2 + im] - y[o2 + i]));
+          var om = 0.4 * Math.min(1, 0.5 * SMK * h / dsl);
+          tx[i] = x[o2 + i] + om * (x[o2 + im] - 2 * x[o2 + i] + x[o2 + ip]);
+          wk[i] = y[o2 + i] + om * (y[o2 + im] - 2 * y[o2 + i] + y[o2 + ip]);
+        }
+        for (i = 0; i < Ni; i++) { x[o2 + i] = tx[i]; y[o2 + i] = wk[i]; }
+      }
+    }
+    // validity
+    var minA = Infinity;
+    for (j = 0; j < Nj; j++) for (i = 0; i < Ni; i++) {
+      var a = j * Ni + i, bq = j * Ni + (i + 1) % Ni, c = bq + Ni, e = a + Ni;
+      var A = 0.5 * ((x[c] - x[a]) * (y[e] - y[bq]) - (x[e] - x[bq]) * (y[c] - y[a]));
+      if (A < minA) minA = A;
+    }
+    if (!(minA > 0)) throw new Error('Mesh generation produced folded cells. Try more points around the body, fewer wall-normal cells, or a smoother shape.');
+    return { Ni: Ni, Nj: Nj, x: x, y: y, h0: m.h0, growth: sp.growth, radius: m.radius };
+  }
+
+  /* ---------------- solver ---------------- */
+  function Solver(mesh, fs) {
+    var Ni = mesh.Ni, Nj = mesh.Nj, NJ = Nj + 4, N = Ni * NJ, xn = mesh.x, yn = mesh.y;
+    var i, j, c, f;
+    var F64 = function (n) { return new Float64Array(n); };
+    var rho = F64(N), ru = F64(N), rv = F64(N), rE = F64(N), nt = F64(N);
+    var u = F64(N), v = F64(N), p = F64(N), T = F64(N), mu = F64(N), mut = F64(N);
+    var ux = F64(N), uy = F64(N), vx = F64(N), vy = F64(N), Tx = F64(N), Ty = F64(N);
+    var R0 = F64(N), R1 = F64(N), R2 = F64(N), R3 = F64(N), R4 = F64(N);
+    var d0 = F64(N), d1 = F64(N), d2 = F64(N), d3 = F64(N), d4 = F64(N);
+    var Dm = F64(N), srcJ = F64(N);
+    var Qn = [F64(N), F64(N), F64(N), F64(N), F64(N)], Qm = [F64(N), F64(N), F64(N), F64(N), F64(N)];
+    var vol = F64(N), xc = F64(N), yc = F64(N), dw = F64(N);
+    var six = F64(Ni * Nj), siy = F64(Ni * Nj), sjx = F64(Ni * (Nj + 1)), sjy = F64(Ni * (Nj + 1));
+    var lamI = F64(Ni * Nj), lamJ = F64(Ni * (Nj + 1)), unI = F64(Ni * Nj), unJ = F64(Ni * (Nj + 1)), difI = F64(Ni * Nj), difJ = F64(Ni * (Nj + 1));
+    var ip1 = new Int32Array(Ni), im1 = new Int32Array(Ni), im2 = new Int32Array(Ni);
+    for (i = 0; i < Ni; i++) { ip1[i] = (i + 1) % Ni; im1[i] = (i + Ni - 1) % Ni; im2[i] = (i + Ni - 2) % Ni; }
+    var cpw = F64(Ni), cfw = F64(Ni), ypw = F64(Ni), xw = F64(Ni), yw = F64(Ni);
+
+    /* metrics */
+    for (j = 0; j < Nj; j++) for (i = 0; i < Ni; i++) {
+      var a = j * Ni + i, b = j * Ni + ip1[i], cc = b + Ni, e = a + Ni;
+      c = (j + 2) * Ni + i;
+      vol[c] = 0.5 * ((xn[cc] - xn[a]) * (yn[e] - yn[b]) - (xn[e] - xn[b]) * (yn[cc] - yn[a]));
+      xc[c] = 0.25 * (xn[a] + xn[b] + xn[cc] + xn[e]); yc[c] = 0.25 * (yn[a] + yn[b] + yn[cc] + yn[e]);
+      six[a] = yn[e] - yn[a]; siy[a] = -(xn[e] - xn[a]);          // i-face at node column i, normal toward +i
+    }
+    for (j = 0; j <= Nj; j++) for (i = 0; i < Ni; i++) {
+      a = j * Ni + i; b = j * Ni + ip1[i];
+      sjx[a] = -(yn[b] - yn[a]); sjy[a] = xn[b] - xn[a];          // j-face, normal toward +j
+    }
+    for (i = 0; i < Ni; i++) {                                    // mirrored ghost centres
+      var fxm = 0.5 * (xn[i] + xn[ip1[i]]), fym = 0.5 * (yn[i] + yn[ip1[i]]);
+      xw[i] = fxm; yw[i] = fym;
+      xc[Ni + i] = 2 * fxm - xc[2 * Ni + i]; yc[Ni + i] = 2 * fym - yc[2 * Ni + i]; vol[Ni + i] = vol[2 * Ni + i];
+      a = Nj * Ni + i; b = Nj * Ni + ip1[i];
+      fxm = 0.5 * (xn[a] + xn[b]); fym = 0.5 * (yn[a] + yn[b]);
+      c = (Nj + 2) * Ni + i;
+      xc[c] = 2 * fxm - xc[c - Ni]; yc[c] = 2 * fym - yc[c - Ni]; vol[c] = vol[c - Ni];
+    }
+    (function wallDistance() {
+      for (var jj = 0; jj < Nj; jj++) for (var ii = 0; ii < Ni; ii++) {
+        var cI = (jj + 2) * Ni + ii, X = xc[cI], Y = yc[cI], best = Infinity;
+        for (var k = 0; k < Ni; k++) {
+          var x1 = xn[k], y1 = yn[k], ex = xn[ip1[k]] - x1, ey = yn[ip1[k]] - y1;
+          var t = ((X - x1) * ex + (Y - y1) * ey) / (ex * ex + ey * ey);
+          t = t < 0 ? 0 : t > 1 ? 1 : t;
+          var dx = X - x1 - t * ex, dy = Y - y1 - t * ey, d2 = dx * dx + dy * dy;
+          if (d2 < best) best = d2;
+        }
+        dw[cI] = Math.sqrt(best);
+      }
+    })();
+
+    /* freestream + controls */
+    var mach, alpha, Re, turb, muInf, Sst, uInf, vInf, pInf = 1 / GAM, ntInf, qInf;
+    function setFreestream(s) {
+      mach = s.mach; alpha = s.alpha; Re = s.Re; turb = !!s.turbulent;
+      muInf = mach / Re; Sst = 110.4 / s.Tinf;
+      uInf = mach * Math.cos(alpha); vInf = mach * Math.sin(alpha);
+      ntInf = turb ? 3 * muInf : 0; qInf = 0.5 * mach * mach;
+    }
+    setFreestream(fs);
+    var ctl = { unsteady: true, dt: 0.02, maxInner: 12, innerTol: 0.03, cflMax: 1000, sweeps: 1, predict: false };
+    var S = {
+      time: 0, step: 0, iters: 0, inner: 0, res: 0, res0: 1, resRel: 1, cl: 0, cd: 0, cm: 0, cdp: 0, cdf: 0, ypMax: 0,
+      diverged: false, limited: 0
+    };
+    var bdf2 = false, lastDt = -1, a0 = 0, a1 = 0, a2 = 0, cfl = 1;
+
+    function init() {
+      for (var k = 0; k < N; k++) {
+        var jj = (k / Ni | 0) - 2, damp = 1;
+        if (jj >= 0 && jj < Nj) { var d = dw[k]; damp = 1 - Math.exp(-d / 0.02); }
+        var pert = 0.03 * mach * Math.exp(-((xc[k] - 1.2) * (xc[k] - 1.2) + (yc[k] - 0.1) * (yc[k] - 0.1)) / 0.3);
+        rho[k] = 1; ru[k] = uInf * damp; rv[k] = (vInf + pert) * damp;
+        rE[k] = pInf / GM1 + 0.5 * (ru[k] * ru[k] + rv[k] * rv[k]); nt[k] = ntInf;
+      }
+      S.time = 0; S.step = 0; S.iters = 0; S.inner = 0; S.diverged = false; bdf2 = false; lastDt = -1; cfl = 1;
+    }
+
+    /* scratch outputs of faceFlux */
+    var F0 = 0, F1 = 0, F2 = 0, F3 = 0, LAM = 0, UNS = 0, DIF = 0, TVX = 0, TVY = 0;
+
+    function lim(a, b) { var ab = a * b; return ab > 0 ? (a * (b * b + 1e-7) + b * (a * a + 1e-7)) / (a * a + b * b + 2e-7) : 0; }
+
+    /* kind: 0 = interior (2nd order), 1 = first order (far field), 2 = wall */
+    function faceFlux(cLL, cL, cR, cRR, sx, sy, kind) {
+      var Sa = Math.sqrt(sx * sx + sy * sy), nx = sx / Sa, ny = sy / Sa;
+      var rL = rho[cL], uL = u[cL], vL = v[cL], pL = p[cL], rR = rho[cR], uR = u[cR], vR = v[cR], pR = p[cR];
+      var f0, f1, f2, f3;
+      if (kind === 2) {
+        f0 = 0; f1 = pR * nx; f2 = pR * ny; f3 = 0;
+      } else {
+        if (kind === 0) {
+          var a, b, r1 = rL, r2 = rR, p1 = pL, p2 = pR, u1 = uL, u2 = uR, v1 = vL, v2 = vR;
+          a = rL - rho[cLL]; b = rR - rL; r1 = rL + 0.5 * lim(a, b); a = rho[cRR] - rR; r2 = rR - 0.5 * lim(b, a);
+          a = pL - p[cLL]; b = pR - pL; p1 = pL + 0.5 * lim(a, b); a = p[cRR] - pR; p2 = pR - 0.5 * lim(b, a);
+          if (r1 > 0 && r2 > 0 && p1 > 0 && p2 > 0) {
+            a = uL - u[cLL]; b = uR - uL; u1 = uL + 0.5 * lim(a, b); a = u[cRR] - uR; u2 = uR - 0.5 * lim(b, a);
+            a = vL - v[cLL]; b = vR - vL; v1 = vL + 0.5 * lim(a, b); a = v[cRR] - vR; v2 = vR - 0.5 * lim(b, a);
+            rL = r1; rR = r2; pL = p1; pR = p2; uL = u1; uR = u2; vL = v1; vR = v2;
+          }
+        }
+        // HLLC
+        var unL = uL * nx + vL * ny, unR = uR * nx + vR * ny;
+        var cL2 = Math.sqrt(GAM * pL / rL), cR2 = Math.sqrt(GAM * pR / rR);
+        var EL = pL / GM1 + 0.5 * rL * (uL * uL + vL * vL), ER = pR / GM1 + 0.5 * rR * (uR * uR + vR * vR);
+        var sqL = Math.sqrt(rL), sqR = Math.sqrt(rR), iw = 1 / (sqL + sqR);
+        var ut = (sqL * uL + sqR * uR) * iw, vt = (sqL * vL + sqR * vR) * iw;
+        var Ht = (sqL * (EL + pL) / rL + sqR * (ER + pR) / rR) * iw;
+        var unt = ut * nx + vt * ny, ct = Math.sqrt(Math.max(GM1 * (Ht - 0.5 * (ut * ut + vt * vt)), 1e-12));
+        var SL = Math.min(unL - cL2, unt - ct), SR = Math.max(unR + cR2, unt + ct);
+        if (SL >= 0) {
+          f0 = rL * unL; f1 = f0 * uL + pL * nx; f2 = f0 * vL + pL * ny; f3 = (EL + pL) * unL;
+        } else if (SR <= 0) {
+          f0 = rR * unR; f1 = f0 * uR + pR * nx; f2 = f0 * vR + pR * ny; f3 = (ER + pR) * unR;
+        } else {
+          var SS = (pR - pL + rL * unL * (SL - unL) - rR * unR * (SR - unR)) / (rL * (SL - unL) - rR * (SR - unR));
+          if (SS >= 0) {
+            var k = rL * (SL - unL) / (SL - SS), m0 = rL * unL;
+            f0 = m0 + SL * (k - rL);
+            f1 = m0 * uL + pL * nx + SL * (k * (uL + (SS - unL) * nx) - rL * uL);
+            f2 = m0 * vL + pL * ny + SL * (k * (vL + (SS - unL) * ny) - rL * vL);
+            f3 = (EL + pL) * unL + SL * (k * (EL / rL + (SS - unL) * (SS + pL / (rL * (SL - unL)))) - EL);
+          } else {
+            k = rR * (SR - unR) / (SR - SS); m0 = rR * unR;
+            f0 = m0 + SR * (k - rR);
+            f1 = m0 * uR + pR * nx + SR * (k * (uR + (SS - unR) * nx) - rR * uR);
+            f2 = m0 * vR + pR * ny + SR * (k * (vR + (SS - unR) * ny) - rR * vR);
+            f3 = (ER + pR) * unR + SR * (k * (ER / rR + (SS - unR) * (SS + pR / (rR * (SR - unR)))) - ER);
+          }
+        }
+      }
+      // viscous part (cell-average gradients, corrected along the centre line)
+      var ex = xc[cR] - xc[cL], ey = yc[cR] - yc[cL], d = Math.sqrt(ex * ex + ey * ey);
+      ex /= d; ey /= d;
+      var dn = d * Math.abs(ex * nx + ey * ny);
+      var muf = 0.5 * (mu[cL] + mu[cR]), mtf = 0.5 * (mut[cL] + mut[cR]);
+      if (mtf < 0) mtf = 0;
+      var uf = 0.5 * (u[cL] + u[cR]), vf = 0.5 * (v[cL] + v[cR]);
+      var gux = 0.5 * (ux[cL] + ux[cR]), guy = 0.5 * (uy[cL] + uy[cR]), co = gux * ex + guy * ey - (u[cR] - u[cL]) / d;
+      gux -= co * ex; guy -= co * ey;
+      var gvx = 0.5 * (vx[cL] + vx[cR]), gvy = 0.5 * (vy[cL] + vy[cR]);
+      co = gvx * ex + gvy * ey - (v[cR] - v[cL]) / d; gvx -= co * ex; gvy -= co * ey;
+      var gTx = 0.5 * (Tx[cL] + Tx[cR]), gTy = 0.5 * (Ty[cL] + Ty[cR]);
+      co = gTx * ex + gTy * ey - (T[cR] - T[cL]) / d; gTx -= co * ex; gTy -= co * ey;
+      var mue = muf + mtf, kc = (muf / PR + mtf / PRT) / GM1;
+      var txx = mue * (4 / 3 * gux - 2 / 3 * gvy), tyy = mue * (4 / 3 * gvy - 2 / 3 * gux), txy = mue * (guy + gvx);
+      TVX = txx * nx + txy * ny; TVY = txy * nx + tyy * ny;
+      f1 -= TVX; f2 -= TVY;
+      f3 -= (uf * txx + vf * txy + kc * gTx) * nx + (uf * txy + vf * tyy + kc * gTy) * ny;
+      F0 = f0 * Sa; F1 = f1 * Sa; F2 = f2 * Sa; F3 = f3 * Sa;
+      var rf = 0.5 * (rho[cL] + rho[cR]), cf = Math.sqrt(GAM * 0.5 * (p[cL] + p[cR]) / rf);
+      var lv = Math.max(4 / 3 * mue, GAM * (muf / PR + mtf / PRT)) / (rf * dn);
+      LAM = Sa * (1.05 * (Math.abs(uf * nx + vf * ny) + cf) + 2 * lv);
+      UNS = (uf * nx + vf * ny) * Sa;
+      if (turb) {
+        var ntL = nt[cL], ntR = nt[cR], nL = mu[cL] / rho[cL] + ntL, nR = mu[cR] / rho[cR] + ntR, nf = 0.5 * (nL + nR), G = Sa / dn;
+        if (nf < 0) nf = 0;
+        var dnt = ntR - ntL;
+        var cLc = ((1 + CB2) * nf - CB2 * nL) / SIG * G, cRc = ((1 + CB2) * nf - CB2 * nR) / SIG * G;
+        if (cLc < 0) cLc = 0; if (cRc < 0) cRc = 0;
+        R4[cL] += (cLc - Math.min(UNS, 0)) * dnt;
+        R4[cR] -= (cRc + Math.max(UNS, 0)) * dnt;
+        DIF = (1 + CB2) * nf / SIG * G;
+      }
+    }
+
+    function primitives() {
+      var c0 = 2 * Ni, c1 = (Nj + 2) * Ni, k, r, uu, vv, pp, tt;
+      for (k = c0; k < c1; k++) {
+        r = rho[k]; uu = ru[k] / r; vv = rv[k] / r; pp = GM1 * (rE[k] - 0.5 * r * (uu * uu + vv * vv));
+        u[k] = uu; v[k] = vv; p[k] = pp; tt = GAM * pp / r; T[k] = tt;
+        mu[k] = muInf * tt * Math.sqrt(tt) * (1 + Sst) / (tt + Sst);
+        if (turb) { var chi = nt[k] * r / mu[k], c3 = chi * chi * chi; mut[k] = r * nt[k] * c3 / (c3 + CV13); } else mut[k] = 0;
+      }
+      // wall ghosts (mirror), far-field ghosts (characteristic)
+      for (var ii = 0; ii < Ni; ii++) {
+        for (var g = 0; g < 2; g++) {
+          var cg = (1 - g) * Ni + ii, ci = (2 + g) * Ni + ii;
+          rho[cg] = rho[ci]; u[cg] = -u[ci]; v[cg] = -v[ci]; p[cg] = p[ci]; T[cg] = T[ci]; mu[cg] = mu[ci]; mut[cg] = -mut[ci]; nt[cg] = -nt[ci];
+        }
+        ci = (Nj + 1) * Ni + ii;
+        var fI = Nj * Ni + ii, sx = sjx[fI], sy = sjy[fI], Sa = Math.sqrt(sx * sx + sy * sy), nx = sx / Sa, ny = sy / Sa;
+        var ri = rho[ci], ui = u[ci], vi = v[ci], pi = p[ci], cI = Math.sqrt(GAM * pi / ri);
+        var vni = ui * nx + vi * ny, vnf = uInf * nx + vInf * ny, rb, ub, vb, pb, ntb;
+        if (vni >= cI) { rb = ri; ub = ui; vb = vi; pb = pi; ntb = nt[ci]; }
+        else if (vnf <= -1 && vni <= -cI) { rb = 1; ub = uInf; vb = vInf; pb = pInf; ntb = ntInf; }
+        else {
+          var Rp = vni + 2 * cI / GM1, Rm = vnf - 2 / GM1, vnb = 0.5 * (Rp + Rm), cb = 0.25 * GM1 * (Rp - Rm), sE;
+          if (vnb > 0) { sE = pi / Math.pow(ri, GAM); ub = ui + (vnb - vni) * nx; vb = vi + (vnb - vni) * ny; ntb = nt[ci]; }
+          else { sE = pInf; ub = uInf + (vnb - vnf) * nx; vb = vInf + (vnb - vnf) * ny; ntb = ntInf; }
+          rb = Math.pow(cb * cb / (GAM * sE), 1 / GM1); pb = rb * cb * cb / GAM;
+        }
+        tt = GAM * pb / rb;
+        var mb = muInf * tt * Math.sqrt(tt) * (1 + Sst) / (tt + Sst), mtb = 0;
+        if (turb) { chi = ntb * rb / mb; c3 = chi * chi * chi; mtb = rb * ntb * c3 / (c3 + CV13); }
+        for (g = 0; g < 2; g++) {
+          cg = (Nj + 2 + g) * Ni + ii;
+          rho[cg] = rb; u[cg] = ub; v[cg] = vb; p[cg] = pb; T[cg] = tt; mu[cg] = mb; mut[cg] = mtb; nt[cg] = ntb;
+        }
+      }
+    }
+
+    function gradients() {
+      for (var jj = 0; jj < Nj; jj++) {
+        var row = (jj + 2) * Ni;
+        for (var ii = 0; ii < Ni; ii++) {
+          var cI = row + ii, cE = row + ip1[ii], cW = row + im1[ii], cN = cI + Ni, cS = cI - Ni;
+          var fw = jj * Ni + ii, fe = jj * Ni + ip1[ii], fs2 = fw, fn = fw + Ni;
+          var ex = 0.5 * six[fe], ey = 0.5 * siy[fe], wx = 0.5 * six[fw], wy = 0.5 * siy[fw];
+          var nxx = 0.5 * sjx[fn], nyy = 0.5 * sjy[fn], sxx = 0.5 * sjx[fs2], syy = 0.5 * sjy[fs2], iv = 1 / vol[cI];
+          var qE = u[cI] + u[cE], qW = u[cI] + u[cW], qN = u[cI] + u[cN], qS = u[cI] + u[cS];
+          ux[cI] = (qE * ex - qW * wx + qN * nxx - qS * sxx) * iv; uy[cI] = (qE * ey - qW * wy + qN * nyy - qS * syy) * iv;
+          qE = v[cI] + v[cE]; qW = v[cI] + v[cW]; qN = v[cI] + v[cN]; qS = v[cI] + v[cS];
+          vx[cI] = (qE * ex - qW * wx + qN * nxx - qS * sxx) * iv; vy[cI] = (qE * ey - qW * wy + qN * nyy - qS * syy) * iv;
+          qE = T[cI] + T[cE]; qW = T[cI] + T[cW]; qN = T[cI] + T[cN]; qS = T[cI] + T[cS];
+          Tx[cI] = (qE * ex - qW * wx + qN * nxx - qS * sxx) * iv; Ty[cI] = (qE * ey - qW * wy + qN * nyy - qS * syy) * iv;
+        }
+      }
+      for (ii = 0; ii < Ni; ii++) {
+        var g = Ni + ii, s = 2 * Ni + ii;
+        ux[g] = ux[s]; uy[g] = uy[s]; vx[g] = vx[s]; vy[g] = vy[s]; Tx[g] = Tx[s]; Ty[g] = Ty[s];
+        g = (Nj + 2) * Ni + ii; s = g - Ni;
+        ux[g] = ux[s]; uy[g] = uy[s]; vx[g] = vx[s]; vy[g] = vy[s]; Tx[g] = Tx[s]; Ty[g] = Ty[s];
+      }
+    }
+
+    function residual() {
+      primitives(); gradients();
+      R0.fill(0); R1.fill(0); R2.fill(0); R3.fill(0); R4.fill(0);
+      var ii, jj, row, cL, cR, fI;
+      for (jj = 0; jj < Nj; jj++) {
+        row = (jj + 2) * Ni;
+        for (ii = 0; ii < Ni; ii++) {
+          cR = row + ii; cL = row + im1[ii]; fI = jj * Ni + ii;
+          faceFlux(row + im2[ii], cL, cR, row + ip1[ii], six[fI], siy[fI], 0);
+          R0[cL] -= F0; R1[cL] -= F1; R2[cL] -= F2; R3[cL] -= F3;
+          R0[cR] += F0; R1[cR] += F1; R2[cR] += F2; R3[cR] += F3;
+          lamI[fI] = LAM; unI[fI] = UNS; difI[fI] = DIF;
+        }
+      }
+      var fx = 0, fy = 0, fxp = 0, fyp = 0, mz = 0, ypm = 0;
+      for (jj = 0; jj <= Nj; jj++) {
+        row = (jj + 2) * Ni;
+        var kind = jj === 0 ? 2 : jj === Nj ? 1 : 0;
+        for (ii = 0; ii < Ni; ii++) {
+          cR = row + ii; cL = cR - Ni; fI = jj * Ni + ii;
+          faceFlux(cL - Ni, cL, cR, cR + Ni, sjx[fI], sjy[fI], kind);
+          R0[cL] -= F0; R1[cL] -= F1; R2[cL] -= F2; R3[cL] -= F3;
+          R0[cR] += F0; R1[cR] += F1; R2[cR] += F2; R3[cR] += F3;
+          lamJ[fI] = LAM; unJ[fI] = UNS; difJ[fI] = DIF;
+          if (jj === 0) {
+            var sx = sjx[fI], sy = sjy[fI], Sa = Math.sqrt(sx * sx + sy * sy), nx = sx / Sa, ny = sy / Sa;
+            fx -= F1; fy -= F2; fxp -= p[cR] * sx; fyp -= p[cR] * sy;
+            mz += (xw[ii] - 0.25) * (-F2) - yw[ii] * (-F1);
+            var tx = ny, ty = -nx; if (tx < 0) { tx = -tx; ty = -ty; }
+            var tw = TVX * tx + TVY * ty, tmag = Math.sqrt(TVX * TVX + TVY * TVY);
+            cpw[ii] = (p[cR] - pInf) / qInf; cfw[ii] = tw / qInf;
+            var yp = rho[cR] * Math.sqrt(tmag / rho[cR]) * dw[cR] / mu[cR];
+            ypw[ii] = yp; if (yp > ypm) ypm = yp;
+          }
+        }
+      }
+      var ca = Math.cos(alpha), sa = Math.sin(alpha);
+      S.cl = (fy * ca - fx * sa) / qInf; S.cd = (fx * ca + fy * sa) / qInf; S.cm = -mz / qInf;
+      S.cdp = (fxp * ca + fyp * sa) / qInf; S.cdf = S.cd - S.cdp; S.ypMax = ypm;
+      // sources, time terms, diagonal
+      var sum = 0, q0 = Qn[0], q1 = Qn[1], q2 = Qn[2], q3 = Qn[3], q4 = Qn[4], m0 = Qm[0], m1 = Qm[1], m2 = Qm[2], m3 = Qm[3], m4 = Qm[4];
+      var uns = ctl.unsteady;
+      for (jj = 0; jj < Nj; jj++) {
+        row = (jj + 2) * Ni;
+        for (ii = 0; ii < Ni; ii++) {
+          var cI = row + ii, V = vol[cI];
+          Dm[cI] = 0.5 * (lamI[jj * Ni + ii] + lamI[jj * Ni + ip1[ii]] + lamJ[jj * Ni + ii] + lamJ[(jj + 1) * Ni + ii]);
+          if (turb) {
+            var om = Math.abs(vx[cI] - uy[cI]), d = dw[cI], nu = mu[cI] / rho[cI], ntc = nt[cI] > 0 ? nt[cI] : 0;
+            var chi = ntc / nu, c3 = chi * chi * chi, fv1 = c3 / (c3 + CV13), fv2 = 1 - chi / (1 + chi * fv1);
+            var inv = 1 / (KAP * KAP * d * d), St = om + ntc * fv2 * inv;
+            if (St < 0.3 * om) St = 0.3 * om;
+            var r = St > 1e-14 ? Math.min(ntc * inv / St, 10) : 10, r2 = r * r, g = r + CW2 * (r2 * r2 * r2 - r), g2 = g * g;
+            var fwv = g * Math.pow((1 + CW36) / (g2 * g2 * g2 + CW36), 1 / 6);
+            R4[cI] += V * (CB1 * St * ntc - CW1 * fwv * ntc * ntc / (d * d));
+            srcJ[cI] = V * 2 * CW1 * fwv * ntc / (d * d);
+          }
+          if (uns) {
+            R0[cI] -= V * (a0 * rho[cI] - a1 * q0[cI] + a2 * m0[cI]);
+            R1[cI] -= V * (a0 * ru[cI] - a1 * q1[cI] + a2 * m1[cI]);
+            R2[cI] -= V * (a0 * rv[cI] - a1 * q2[cI] + a2 * m2[cI]);
+            R3[cI] -= V * (a0 * rE[cI] - a1 * q3[cI] + a2 * m3[cI]);
+            R4[cI] -= V * (a0 * nt[cI] - a1 * q4[cI] + a2 * m4[cI]);
+          }
+          var rr = R0[cI] / V; sum += rr * rr;
+        }
+      }
+      S.res = Math.sqrt(sum / (Ni * Nj));
+    }
+
+    /* symmetric Gauss-Seidel on the first-order linearisation (matrix-free LU-SGS form) */
+    var a_r = 0, a_1 = 0, a_2 = 0, a_3 = 0;
+    function offDiag(cn, sx, sy, lam) {
+      var q0 = d0[cn], q1 = d1[cn], q2 = d2[cn], q3 = d3[cn];
+      if (q0 === 0 && q1 === 0 && q2 === 0 && q3 === 0) return;
+      var rn = rho[cn] + q0, m1 = ru[cn] + q1, m2 = rv[cn] + q2, en = rE[cn] + q3;
+      var pn = GM1 * (en - 0.5 * (m1 * m1 + m2 * m2) / rn);
+      if (rn > 1e-6 && pn > 1e-8) {
+        var un = (m1 * sx + m2 * sy) / rn, uo = u[cn] * sx + v[cn] * sy, po = p[cn];
+        a_r -= 0.5 * (rn * un - rho[cn] * uo - lam * q0);
+        a_1 -= 0.5 * (m1 * un + pn * sx - ru[cn] * uo - po * sx - lam * q1);
+        a_2 -= 0.5 * (m2 * un + pn * sy - rv[cn] * uo - po * sy - lam * q2);
+        a_3 -= 0.5 * ((en + pn) * un - (rE[cn] + po) * uo - lam * q3);
+      } else { a_r += 0.5 * lam * q0; a_1 += 0.5 * lam * q1; a_2 += 0.5 * lam * q2; a_3 += 0.5 * lam * q3; }
+    }
+    /* line-implicit: block-tridiagonal solve along each wall-normal line, Gauss-Seidel between lines */
+    var JM = F64(16), DP = F64(16), INV = F64(16), WW = F64(16 * Nj), GG = F64(4 * Nj), TA = F64(Nj), TB = F64(Nj);
+    function jac(cn, sx, sy, lam) {            // JM = 0.5 * (A(Q_cn; S) - lam I)
+      var uu = u[cn], vv = v[cn], r = rho[cn], pp = p[cn], q2 = uu * uu + vv * vv, phi = 0.5 * GM1 * q2;
+      var H = (pp / GM1 + 0.5 * r * q2 + pp) / r, un = uu * sx + vv * sy, hl = 0.5 * lam;
+      JM[0] = -hl; JM[1] = 0.5 * sx; JM[2] = 0.5 * sy; JM[3] = 0;
+      JM[4] = 0.5 * (phi * sx - uu * un); JM[5] = 0.5 * (un + (2 - GAM) * uu * sx) - hl; JM[6] = 0.5 * (uu * sy - GM1 * vv * sx); JM[7] = 0.5 * GM1 * sx;
+      JM[8] = 0.5 * (phi * sy - vv * un); JM[9] = 0.5 * (vv * sx - GM1 * uu * sy); JM[10] = 0.5 * (un + (2 - GAM) * vv * sy) - hl; JM[11] = 0.5 * GM1 * sy;
+      JM[12] = 0.5 * (phi - H) * un; JM[13] = 0.5 * (H * sx - GM1 * uu * un); JM[14] = 0.5 * (H * sy - GM1 * vv * un); JM[15] = 0.5 * GAM * un - hl;
+    }
+    function inv4() {                          // INV = DP^-1 (Gauss-Jordan, partial pivoting); destroys DP
+      var a = DP, b = INV, r, c2, k, piv, t, pr;
+      for (k = 0; k < 16; k++) b[k] = 0; b[0] = b[5] = b[10] = b[15] = 1;
+      for (c2 = 0; c2 < 4; c2++) {
+        pr = c2; piv = Math.abs(a[c2 * 4 + c2]);
+        for (r = c2 + 1; r < 4; r++) { t = Math.abs(a[r * 4 + c2]); if (t > piv) { piv = t; pr = r; } }
+        if (pr !== c2) for (k = 0; k < 4; k++) { t = a[c2 * 4 + k]; a[c2 * 4 + k] = a[pr * 4 + k]; a[pr * 4 + k] = t; t = b[c2 * 4 + k]; b[c2 * 4 + k] = b[pr * 4 + k]; b[pr * 4 + k] = t; }
+        t = 1 / a[c2 * 4 + c2];
+        for (k = 0; k < 4; k++) { a[c2 * 4 + k] *= t; b[c2 * 4 + k] *= t; }
+        for (r = 0; r < 4; r++) if (r !== c2) {
+          t = a[r * 4 + c2];
+          if (t !== 0) for (k = 0; k < 4; k++) { a[r * 4 + k] -= t * a[c2 * 4 + k]; b[r * 4 + k] -= t * b[c2 * 4 + k]; }
+        }
+      }
+    }
+    function lineSolve(ii, ic) {
+      var jj, k, r, m, row, cI, fw, fe, o, og, s0, s1, s2, s3;
+      for (jj = 0; jj < Nj; jj++) {
+        row = (jj + 2) * Ni; cI = row + ii; fw = jj * Ni + ii; fe = jj * Ni + ip1[ii];
+        a_r = R0[cI]; a_1 = R1[cI]; a_2 = R2[cI]; a_3 = R3[cI];
+        offDiag(row + im1[ii], -six[fw], -siy[fw], lamI[fw]);
+        offDiag(row + ip1[ii], six[fe], siy[fe], lamI[fe]);
+        var ds = Dm[cI] * (1 + ic) + vol[cI] * a0;
+        for (k = 0; k < 16; k++) DP[k] = 0; DP[0] = DP[5] = DP[10] = DP[15] = ds;
+        if (jj === 0) {                        // mirrored wall ghost: dQ_g = diag(1,-1,-1,1) dQ
+          jac(cI - Ni, -sjx[fw], -sjy[fw], lamJ[fw]);
+          for (r = 0; r < 4; r++) { DP[r * 4] += JM[r * 4]; DP[r * 4 + 1] -= JM[r * 4 + 1]; DP[r * 4 + 2] -= JM[r * 4 + 2]; DP[r * 4 + 3] += JM[r * 4 + 3]; }
+        } else {
+          jac(cI - Ni, -sjx[fw], -sjy[fw], lamJ[fw]);
+          o = 16 * (jj - 1); og = 4 * (jj - 1);
+          for (r = 0; r < 4; r++) {
+            var l0 = JM[r * 4], l1 = JM[r * 4 + 1], l2 = JM[r * 4 + 2], l3 = JM[r * 4 + 3];
+            for (k = 0; k < 4; k++) DP[r * 4 + k] -= l0 * WW[o + k] + l1 * WW[o + 4 + k] + l2 * WW[o + 8 + k] + l3 * WW[o + 12 + k];
+            m = l0 * GG[og] + l1 * GG[og + 1] + l2 * GG[og + 2] + l3 * GG[og + 3];
+            if (r === 0) a_r -= m; else if (r === 1) a_1 -= m; else if (r === 2) a_2 -= m; else a_3 -= m;
+          }
+        }
+        inv4();
+        o = 16 * jj; og = 4 * jj;
+        if (jj < Nj - 1) {
+          jac(cI + Ni, sjx[fw + Ni], sjy[fw + Ni], lamJ[fw + Ni]);
+          for (r = 0; r < 4; r++) for (k = 0; k < 4; k++)
+            WW[o + r * 4 + k] = INV[r * 4] * JM[k] + INV[r * 4 + 1] * JM[4 + k] + INV[r * 4 + 2] * JM[8 + k] + INV[r * 4 + 3] * JM[12 + k];
+        }
+        for (r = 0; r < 4; r++) GG[og + r] = INV[r * 4] * a_r + INV[r * 4 + 1] * a_1 + INV[r * 4 + 2] * a_2 + INV[r * 4 + 3] * a_3;
+      }
+      s0 = s1 = s2 = s3 = 0;
+      for (jj = Nj - 1; jj >= 0; jj--) {
+        o = 16 * jj; og = 4 * jj; cI = (jj + 2) * Ni + ii;
+        if (jj < Nj - 1) {
+          var t0 = GG[og] - (WW[o] * s0 + WW[o + 1] * s1 + WW[o + 2] * s2 + WW[o + 3] * s3);
+          var t1 = GG[og + 1] - (WW[o + 4] * s0 + WW[o + 5] * s1 + WW[o + 6] * s2 + WW[o + 7] * s3);
+          var t2 = GG[og + 2] - (WW[o + 8] * s0 + WW[o + 9] * s1 + WW[o + 10] * s2 + WW[o + 11] * s3);
+          var t3 = GG[og + 3] - (WW[o + 12] * s0 + WW[o + 13] * s1 + WW[o + 14] * s2 + WW[o + 15] * s3);
+          s0 = t0; s1 = t1; s2 = t2; s3 = t3;
+        } else { s0 = GG[og]; s1 = GG[og + 1]; s2 = GG[og + 2]; s3 = GG[og + 3]; }
+        d0[cI] = s0; d1[cI] = s1; d2[cI] = s2; d3[cI] = s3;
+      }
+    }
+    function lineSolveNt(ii, ic) {
+      var jj, row, cI, fw, fe, fn, prev = 0;
+      for (jj = 0; jj < Nj; jj++) {
+        row = (jj + 2) * Ni; cI = row + ii; fw = jj * Ni + ii; fe = jj * Ni + ip1[ii]; fn = fw + Ni;
+        var aW = Math.max(unI[fw], 0) + difI[fw], aE = Math.max(-unI[fe], 0) + difI[fe];
+        var aS = Math.max(unJ[fw], 0) + difJ[fw], aN = Math.max(-unJ[fn], 0) + difJ[fn];
+        var rhs = R4[cI] + aW * d4[row + im1[ii]] + aE * d4[row + ip1[ii]];
+        var dg = aW + aE + aS + aN + srcJ[cI] + Dm[cI] * ic + vol[cI] * a0;
+        if (jj === 0) dg += aS; else { dg -= aS * TA[jj - 1]; rhs += aS * prev; }
+        TA[jj] = jj < Nj - 1 ? aN / dg : 0; prev = rhs / dg; TB[jj] = prev;
+      }
+      prev = 0;
+      for (jj = Nj - 1; jj >= 0; jj--) { prev = TB[jj] + TA[jj] * prev; d4[(jj + 2) * Ni + ii] = prev; }
+    }
+
+    function implicitUpdate() {
+      var ic = 1 / cfl, ii, jj, s, k;
+      d0.fill(0); d1.fill(0); d2.fill(0); d3.fill(0); d4.fill(0);
+      for (s = 0; s < ctl.sweeps; s++) {
+        for (ii = 0; ii < Ni; ii++) lineSolve(ii, ic);
+        for (ii = Ni - 1; ii >= 0; ii--) lineSolve(ii, ic);
+      }
+      if (turb) for (s = 0; s < ctl.sweeps; s++) {
+        for (ii = 0; ii < Ni; ii++) lineSolveNt(ii, ic);
+        for (ii = Ni - 1; ii >= 0; ii--) lineSolveNt(ii, ic);
+      }
+      var nlim = 0, c0 = 2 * Ni, c1 = (Nj + 2) * Ni;
+      for (k = c0; k < c1; k++) {
+        var fac = 1, r = rho[k], dr = d0[k];
+        if (dr !== dr) { S.diverged = true; return; }
+        if (dr < -0.4 * r) fac = -0.4 * r / dr; else if (dr > 1.0 * r) fac = r / dr;
+        var pOld = GM1 * (rE[k] - 0.5 * (ru[k] * ru[k] + rv[k] * rv[k]) / r), tries = 0, rn, m1, m2, en, pn;
+        for (; ;) {
+          rn = r + fac * dr; m1 = ru[k] + fac * d1[k]; m2 = rv[k] + fac * d2[k]; en = rE[k] + fac * d3[k];
+          pn = GM1 * (en - 0.5 * (m1 * m1 + m2 * m2) / rn);
+          if (pn > 0.5 * pOld && pn < 2.5 * pOld) break;
+          fac *= 0.5; if (++tries > 6) { fac = 0; rn = r; m1 = ru[k]; m2 = rv[k]; en = rE[k]; break; }
+        }
+        if (fac < 1) nlim++;
+        rho[k] = rn; ru[k] = m1; rv[k] = m2; rE[k] = en;
+        if (turb) { var nn = nt[k] + d4[k]; nt[k] = nn > 1e-3 * ntInf ? nn : (nn > 0.2 * nt[k] ? nn : Math.max(0.2 * nt[k], 1e-3 * ntInf)); }
+      }
+      S.limited = nlim;
+    }
+
+    function setTimeCoeffs() {
+      if (!ctl.unsteady) { a0 = a1 = a2 = 0; return; }
+      var dt = ctl.dt / mach;                         // dt is given in chord / U_inf
+      if (bdf2 && lastDt === ctl.dt) { a0 = 1.5 / dt; a1 = 2 / dt; a2 = 0.5 / dt; }
+      else { a0 = 1 / dt; a1 = 1 / dt; a2 = 0; }
+    }
+
+    /* one pseudo-time iteration; returns true when a physical time step (or a steady iteration) completed */
+    function iterate() {
+      if (S.diverged) return false;
+      var k;
+      if (ctl.unsteady && S.inner === 0) {
+        var cur = [rho, ru, rv, rE, nt];
+        for (k = 0; k < 5; k++) { Qm[k].set(Qn[k]); Qn[k].set(cur[k]); }
+        setTimeCoeffs();
+        if (ctl.predict && bdf2 && lastDt === ctl.dt) {      // start the step from a second-order extrapolation in time
+          var q0 = Qn[0], q1 = Qn[1], q2 = Qn[2], q3 = Qn[3], q4 = Qn[4], m0 = Qm[0], m1 = Qm[1], m2 = Qm[2], m3 = Qm[3], m4 = Qm[4];
+          for (k = 2 * Ni; k < (Nj + 2) * Ni; k++) {
+            var r = 2 * q0[k] - m0[k], a = 2 * q1[k] - m1[k], b = 2 * q2[k] - m2[k], e = 2 * q3[k] - m3[k];
+            var pn = GM1 * (e - 0.5 * (a * a + b * b) / r), po = GM1 * (q3[k] - 0.5 * (q1[k] * q1[k] + q2[k] * q2[k]) / q0[k]);
+            if (r > 0.7 * q0[k] && r < 1.4 * q0[k] && pn > 0.7 * po && pn < 1.4 * po) { rho[k] = r; ru[k] = a; rv[k] = b; rE[k] = e; if (turb) { var nn = 2 * q4[k] - m4[k]; if (nn > 0.5 * q4[k]) nt[k] = nn; } }
+          }
+        }
+      } else if (!ctl.unsteady) { a0 = a1 = a2 = 0; bdf2 = false; }
+      cfl = Math.min(ctl.cflMax, 1.5 * Math.pow(1.12, S.iters));
+      residual();
+      if (!(S.res === S.res) || !isFinite(S.res)) { S.diverged = true; return false; }
+      if (S.inner === 0) S.res0 = S.res > 0 ? S.res : 1;
+      S.resRel = S.res / S.res0;
+      implicitUpdate();
+      S.iters++;
+      if (!ctl.unsteady) { S.step++; return true; }
+      S.inner++;
+      if (S.inner >= ctl.maxInner || (S.inner >= 3 && S.resRel < ctl.innerTol)) {
+        S.lastInner = S.inner; S.inner = 0; S.time += ctl.dt; S.step++; bdf2 = true; lastDt = ctl.dt;
+        return true;
+      }
+      return false;
+    }
+
+    init();
+    return {
+      Ni: Ni, Nj: Nj, mesh: mesh, state: S, ctl: ctl, iterate: iterate, init: init, setFreestream: setFreestream,
+      refresh: function () { primitives(); gradients(); },
+      fs: function () { return { mach: mach, alpha: alpha, Re: Re, turbulent: turb, qInf: qInf, pInf: pInf, muInf: muInf }; },
+      fields: { rho: rho, u: u, v: v, p: p, T: T, mu: mu, mut: mut, nt: nt, ux: ux, uy: uy, vx: vx, vy: vy, vol: vol, xc: xc, yc: yc, dw: dw },
+      wall: { cp: cpw, cf: cfw, yplus: ypw, x: xw, y: yw }
+    };
+  }
+
+  /* ============ hybrid mesh: body-fitted O-layers inside a rectangle, adaptive quadtree of squares outside ============ */
+  function buildHybrid(geo, m) {
+    var Ni = m.Ni, i, j, it, k;
+    var poly = bodyPolyline(geo), surf = distributeSurface(poly, Ni, 0.3);
+    var clen = 0;
+    for (k = 0; k < poly.x.length; k++) { var k1 = (k + 1) % poly.x.length; clen += Math.hypot(poly.x[k1] - poly.x[k], poly.y[k1] - poly.y[k]); }
+    var target = m.thick, h = Math.min(0.5 * target, 1.2 * clen / Ni), hs = [], y = 0;   // layer thickness, and the size of the squares that meet it
+    function layerSet(hf, rg) { var o = [], yy = 0, q = hf; while (yy < target && o.length < 200) { var s = Math.min(q, h); o.push(s); yy += s; q *= rg; } return o; }
+    var hf0 = Math.min(m.h0, target / 24), rg = 1.2;
+    hs = layerSet(hf0, rg);
+    if (hs.length < 24) {                          // low Reynolds number: keep at least 24 layers by slowing the growth
+      var glo = 1, ghi = 1.2;
+      for (it = 0; it < 30; it++) { rg = 0.5 * (glo + ghi); if (layerSet(hf0, rg).length >= 24) glo = rg; else ghi = rg; }
+      rg = glo; hs = layerSet(hf0, rg);
+    }
+    for (j = 0, y = 0; j < hs.length; j++) y += hs[j];
+    var Nj = hs.length, sc = target / y, ycum = [0];
+    for (j = 0; j < Nj; j++) { hs[j] *= sc; ycum.push(ycum[j] + hs[j]); }
+    var x = new Float64Array(Ni * (Nj + 1)), yv = new Float64Array(Ni * (Nj + 1));
+    x.set(surf.x, 0); yv.set(surf.y, 0);
+    var nxv = new Float64Array(Ni), nyv = new Float64Array(Ni), tx = new Float64Array(Ni), ty = new Float64Array(Ni);
+    for (j = 0; j < Nj; j++) {                                     // advancing layers, as in the O-mesh
+      var o = j * Ni, o2 = o + Ni, hj = hs[j], ip, im, d;
+      for (i = 0; i < Ni; i++) { ip = (i + 1) % Ni; im = (i + Ni - 1) % Ni; var dx = x[o + ip] - x[o + im], dy = yv[o + ip] - yv[o + im]; d = Math.hypot(dx, dy) || 1; nxv[i] = -dy / d; nyv[i] = dx / d; }
+      var npass = SMK * (2 + Math.min(12, j >> 2));
+      for (it = 0; it < npass; it++) {
+        for (i = 0; i < Ni; i++) { ip = (i + 1) % Ni; im = (i + Ni - 1) % Ni; tx[i] = nxv[i] + 0.25 * (nxv[im] - 2 * nxv[i] + nxv[ip]); ty[i] = nyv[i] + 0.25 * (nyv[im] - 2 * nyv[i] + nyv[ip]); }
+        for (i = 0; i < Ni; i++) { d = Math.hypot(tx[i], ty[i]) || 1; nxv[i] = tx[i] / d; nyv[i] = ty[i] / d; }
+      }
+      for (i = 0; i < Ni; i++) { x[o2 + i] = x[o + i] + hj * nxv[i]; yv[o2 + i] = yv[o + i] + hj * nyv[i]; }
+      var pp = SMK * (1 + Math.min(6, j >> 3));
+      for (it = 0; it < pp; it++) {
+        for (i = 0; i < Ni; i++) {
+          ip = (i + 1) % Ni; im = (i + Ni - 1) % Ni;
+          var dsl = 0.5 * (Math.hypot(x[o2 + ip] - x[o2 + i], yv[o2 + ip] - yv[o2 + i]) + Math.hypot(x[o2 + im] - x[o2 + i], yv[o2 + im] - yv[o2 + i]));
+          var rr = 0.5 * SMK * hj / dsl, om = 0.4 * Math.min(1, rr * Math.min(1, 4 * rr));
+          tx[i] = x[o2 + i] + om * (x[o2 + im] - 2 * x[o2 + i] + x[o2 + ip]); ty[i] = yv[o2 + i] + om * (yv[o2 + im] - 2 * yv[o2 + i] + yv[o2 + ip]);
+        }
+        for (i = 0; i < Ni; i++) { x[o2 + i] = tx[i]; yv[o2 + i] = ty[i]; }
+      }
+    }
+    var minA = Infinity;                           // the layers stay wall-normal: nothing pulls their outer edge to a fixed shape
+    for (j = 0; j < Nj; j++) for (i = 0; i < Ni; i++) {
+      var a = j * Ni + i, b = j * Ni + (i + 1) % Ni, c = b + Ni, e = a + Ni;
+      var A = 0.5 * ((x[c] - x[a]) * (yv[e] - yv[b]) - (x[e] - x[b]) * (yv[c] - yv[a]));
+      if (A < minA) minA = A;
+    }
+    if (!(minA > 0)) throw new Error('Mesh generation produced folded cells in the near-body layers. Try more points around the body or a smoother shape.');
+    var sfrac = new Float64Array(Nj + 1); for (j = 0; j <= Nj; j++) sfrac[j] = ycum[j] / target;
+    return { poly: poly, sfrac: sfrac, Ni: Ni, Nj: Nj, x: x, y: yv, h: h, thick: target, radius: m.radius, h0: m.h0, growth: rg, hybrid: true };
+  }
+
+  function HybridSolver(mesh, fs, opt) {
+    var Ni0 = mesh.Ni, Ni = Ni0, NiMax = 2 * Ni0, Njb = mesh.Nj, Nb = Ni * Njb, xn = mesh.x, yn = mesh.y, h = mesh.h;
+    var maxQ = (opt && opt.maxQuads) || 9000, CAP = NiMax * Njb + maxQ + 16;
+    var F64 = function (n) { return new Float64Array(n); };
+    var rho = F64(CAP), ru = F64(CAP), rv = F64(CAP), rE = F64(CAP), nt = F64(CAP);
+    var u = F64(CAP), v = F64(CAP), p = F64(CAP), T = F64(CAP), mu = F64(CAP), mut = F64(CAP);
+    var rx = F64(CAP), ry = F64(CAP), ux = F64(CAP), uy = F64(CAP), vx = F64(CAP), vy = F64(CAP), px = F64(CAP), py = F64(CAP);
+    var i11 = F64(CAP), i12 = F64(CAP), i22 = F64(CAP);
+    var R0 = F64(CAP), R1 = F64(CAP), R2 = F64(CAP), R3 = F64(CAP), R4 = F64(CAP);
+    var d0 = F64(CAP), d1 = F64(CAP), d2 = F64(CAP), d3 = F64(CAP), d4 = F64(CAP);
+    var Dm = F64(CAP), srcJ = F64(CAP), vol = F64(CAP), xc = F64(CAP), yc = F64(CAP), dw = F64(CAP), csz = F64(CAP);
+    var Qn = [F64(CAP), F64(CAP), F64(CAP), F64(CAP), F64(CAP)], Qm = [F64(CAP), F64(CAP), F64(CAP), F64(CAP), F64(CAP)];
+    var QA = [rho, ru, rv, rE, nt].concat(Qn, Qm);
+    var FJ0 = Ni * Njb, FW0 = FJ0 + Ni * (Njb - 1), Fs = FW0 + Ni, FCAP = 2 * NiMax * Njb + NiMax + 4 * maxQ + 8 * NiMax + 64;
+    var fL = new Int32Array(FCAP), fR = new Int32Array(FCAP), fsx = F64(FCAP), fsy = F64(FCAP), fxm = F64(FCAP), fym = F64(FCAP);
+    var lam = F64(FCAP), uns = F64(FCAP), dif = F64(FCAP);
+    /* data the implicit sweeps read, interleaved so each neighbour costs a few cache lines, not twenty:
+       FI per face: u, v, nx, ny, l2, s1, s2, s1/c^2, s2/c, H, viscous, c, Sx, Sy;  DQ per cell: the four updates, then u, v, H */
+    var FI = F64(16 * FCAP), DQ = F64(8 * CAP), cnb = new Int32Array(2 * (4 * maxQ + 8 * NiMax + 64) + 8), csg = new Float64Array(2 * (4 * maxQ + 8 * NiMax + 64) + 8);
+    var DG = F64(16 * CAP), DI = F64(16 * CAP), diagAge = 99;
+    var cs = new Int32Array(CAP + 2), cfa = new Int32Array(2 * (4 * maxQ + 8 * NiMax + 64) + 8), cnode = new Int32Array(CAP);
+    var nC = Nb, nF = Fs, i, j, c, f;
+    var ip1 = new Int32Array(NiMax), im1 = new Int32Array(NiMax);
+    var cpw = F64(NiMax), cfw = F64(NiMax), ypw = F64(NiMax), xw = F64(NiMax), yw = F64(NiMax), wall = {};
+
+    function wallDist(X, Y) {
+      var best = Infinity;
+      for (var k = 0; k < Ni; k++) {
+        var x1 = xn[k], y1 = yn[k], ex = xn[ip1[k]] - x1, ey = yn[ip1[k]] - y1;
+        var t = ((X - x1) * ex + (Y - y1) * ey) / (ex * ex + ey * ey); t = t < 0 ? 0 : t > 1 ? 1 : t;
+        var dx = X - x1 - t * ex, dy = Y - y1 - t * ey, q = dx * dx + dy * dy; if (q < best) best = q;
+      }
+      return Math.sqrt(best);
+    }
+
+    /* ---- O-layers as a ring of wall-normal lines; a column of cells sits between line i and line i+1 ---- */
+    var lines = [], cols = [], segFirst = new Int32Array(Ni0), blockGen = 0, sfrac = mesh.sfrac, bpx = mesh.poly.x, bpy = mesh.poly.y;
+    for (i = 0; i < Ni0; i++) {
+      var lx = F64(Njb + 1), ly = F64(Njb + 1);
+      for (j = 0; j <= Njb; j++) { lx[j] = mesh.x[j * Ni0 + i]; ly[j] = mesh.y[j * Ni0 + i]; }
+      lines.push({ x: lx, y: ly, lev: 0, pk: i }); cols.push({ lev: 0, q: F64(15 * Njb) });
+    }
+    function setBlock() {
+      Ni = lines.length; Nb = Ni * Njb; FJ0 = Ni * Njb; FW0 = FJ0 + Ni * (Njb - 1); Fs = FW0 + Ni;
+      xn = F64(Ni * (Njb + 1)); yn = F64(Ni * (Njb + 1));
+      for (i = 0; i < Ni; i++) { ip1[i] = (i + 1) % Ni; im1[i] = (i + Ni - 1) % Ni; var L = lines[i]; for (j = 0; j <= Njb; j++) { xn[j * Ni + i] = L.x[j]; yn[j * Ni + i] = L.y[j]; } }
+      for (j = 0; j < Njb; j++) for (i = 0; i < Ni; i++) {
+        var a = j * Ni + i, b = j * Ni + ip1[i], cc = b + Ni, e = a + Ni;
+        c = a;
+        vol[c] = 0.5 * ((xn[cc] - xn[a]) * (yn[e] - yn[b]) - (xn[e] - xn[b]) * (yn[cc] - yn[a]));
+        xc[c] = 0.25 * (xn[a] + xn[b] + xn[cc] + xn[e]); yc[c] = 0.25 * (yn[a] + yn[b] + yn[cc] + yn[e]);
+        f = a; fL[f] = j * Ni + im1[i]; fR[f] = c; fsx[f] = yn[e] - yn[a]; fsy[f] = -(xn[e] - xn[a]); fxm[f] = 0.5 * (xn[a] + xn[e]); fym[f] = 0.5 * (yn[a] + yn[e]);
+        if (j > 0) { f = FJ0 + (j - 1) * Ni + i; fL[f] = c - Ni; fR[f] = c; fsx[f] = -(yn[b] - yn[a]); fsy[f] = xn[b] - xn[a]; }
+        else { f = FW0 + i; fL[f] = c; fR[f] = -1; fsx[f] = yn[b] - yn[a]; fsy[f] = -(xn[b] - xn[a]); xw[i] = 0.5 * (xn[a] + xn[b]); yw[i] = 0.5 * (yn[a] + yn[b]); }
+        fxm[f] = 0.5 * (xn[a] + xn[b]); fym[f] = 0.5 * (yn[a] + yn[b]);
+      }
+      for (c = 0; c < Nb; c++) dw[c] = wallDist(xc[c], yc[c]);
+      segFirst.fill(-1);
+      for (i = 0; i < Ni; i++) { var sg = Math.floor(lines[i].pk + 1e-9) % Ni0; if (segFirst[sg] < 0) segFirst[sg] = i; }
+      for (i = 0; i < Ni; i++) { var cq = cols[i].q; for (j = 0; j < Njb; j++) { c = j * Ni + i; for (var q = 0; q < 15; q++) QA[q][c] = cq[15 * j + q]; } }
+      mesh.Ni = Ni; mesh.x = xn; mesh.y = yn;
+      wall.cp = cpw.subarray(0, Ni); wall.cf = cfw.subarray(0, Ni); wall.yplus = ypw.subarray(0, Ni); wall.x = xw.subarray(0, Ni); wall.y = yw.subarray(0, Ni);
+      blockGen++;
+    }
+    function saveCols() { for (var ii = 0; ii < Ni; ii++) { var cq = cols[ii].q; for (var jj = 0; jj < Njb; jj++) { var cI = jj * Ni + ii; for (var q = 0; q < 15; q++) cq[15 * jj + q] = QA[q][cI]; } } }
+    function snapToBody(X, Y) {                  // nearest point on the true body outline
+      var best = Infinity, bx = X, by = Y, M = bpx.length;
+      for (var k = 0; k < M; k++) {
+        var k1 = k + 1 === M ? 0 : k + 1, x1 = bpx[k], y1 = bpy[k], ex = bpx[k1] - x1, ey = bpy[k1] - y1;
+        var t = ((X - x1) * ex + (Y - y1) * ey) / (ex * ex + ey * ey + 1e-300); t = t < 0 ? 0 : t > 1 ? 1 : t;
+        var dx = X - x1 - t * ex, dy = Y - y1 - t * ey, d2 = dx * dx + dy * dy;
+        if (d2 < best) { best = d2; bx = x1 + t * ex; by = y1 + t * ey; }
+      }
+      SNX = bx; SNY = by;
+    }
+    var SNX = 0, SNY = 0;
+    function midLine(A, B, lev, pk) {            // new wall-normal line halfway between two lines, its foot on the body
+      var lx = F64(Njb + 1), ly = F64(Njb + 1), jj;
+      for (jj = 0; jj <= Njb; jj++) { lx[jj] = 0.5 * (A.x[jj] + B.x[jj]); ly[jj] = 0.5 * (A.y[jj] + B.y[jj]); }
+      snapToBody(lx[0], ly[0]);
+      var ddx = SNX - lx[0], ddy = SNY - ly[0];
+      for (jj = 0; jj <= Njb; jj++) { var s = sfrac[jj], w = 1 - s * s * s * (10 - 15 * s + 6 * s * s); lx[jj] += w * ddx; ly[jj] += w * ddy; }
+      return { x: lx, y: ly, lev: lev, pk: pk };
+    }
+    function colValid(A, B) {
+      for (var jj = 0; jj < Njb; jj++) if (!(0.5 * ((B.x[jj + 1] - A.x[jj]) * (A.y[jj + 1] - B.y[jj]) - (A.x[jj + 1] - B.x[jj]) * (B.y[jj + 1] - A.y[jj])) > 0)) return false;
+      return true;
+    }
+    setBlock();
+
+    /* ---- interface curve: the outer edge of the O-layers. Column splits only subdivide its segments, so its shape is fixed ---- */
+    var GX = F64(Ni0), GY = F64(Ni0), gbx0 = Infinity, gbx1 = -Infinity, gby0 = Infinity, gby1 = -Infinity;
+    for (i = 0; i < Ni0; i++) {
+      GX[i] = mesh.x[Njb * Ni0 + i]; GY[i] = mesh.y[Njb * Ni0 + i];
+      if (GX[i] < gbx0) gbx0 = GX[i]; if (GX[i] > gbx1) gbx1 = GX[i]; if (GY[i] < gby0) gby0 = GY[i]; if (GY[i] > gby1) gby1 = GY[i];
+    }
+    function insideG(X, Y) {
+      if (X < gbx0 || X > gbx1 || Y < gby0 || Y > gby1) return false;
+      var ins = false;
+      for (var a = 0, b = Ni0 - 1; a < Ni0; b = a++) if ((GY[a] > Y) !== (GY[b] > Y) && X < (GX[b] - GX[a]) * (Y - GY[a]) / (GY[b] - GY[a]) + GX[a]) ins = !ins;
+      return ins;
+    }
+
+    /* ---- quadtree of squares; those crossed by the interface curve are cut to the part outside it ---- */
+    var LI = Math.max(3, Math.ceil(Math.log(3 / h) / Math.LN2)), Rs = h * Math.pow(2, LI);
+    var N0 = Math.max(4, Math.ceil(2 * mesh.radius / Rs));
+    var ox = 0.5 * (gbx0 + gbx1) - 0.5 * N0 * Rs + 0.3713 * h, oy = 0.5 * (gby0 + gby1) - 0.5 * N0 * Rs + 0.6127 * h;
+    var GRADE = 0.3;
+    var nl = [], nix = [], niy = [], npar = [], nch = [], nsol = [], ncell = [], ncut = [], freeN = [], map = new Map(), leafCount = 0, roots = [], leafNodes = [];
+    var nodeQ = F64(15 * 4096);
+    function key(l, ix, iy) { return (l * 4194304 + ix) * 4194304 + iy; }
+    function newNode(l, ix, iy, par) {
+      var n = freeN.length ? freeN.pop() : nl.length;
+      nl[n] = l; nix[n] = ix; niy[n] = iy; npar[n] = par; nsol[n] = 0; ncell[n] = -1; ncut[n] = undefined;
+      nch[4 * n] = nch[4 * n + 1] = nch[4 * n + 2] = nch[4 * n + 3] = -1;
+      map.set(key(l, ix, iy), n);
+      if (15 * (n + 1) > nodeQ.length) { var g = F64(nodeQ.length * 2); g.set(nodeQ); nodeQ = g; }
+      return n;
+    }
+    function boxDist(l, ix, iy) {               // distance from a square to the box around the interface curve
+      var s = Rs / Math.pow(2, l), xa = ox + ix * s, ya = oy + iy * s;
+      return Math.hypot(Math.max(gbx0 - (xa + s), xa - gbx1, 0), Math.max(gby0 - (ya + s), ya - gby1, 0));
+    }
+    /* wake zone: a band downstream of the body, widening with distance, where squares never grow beyond twice the interface size */
+    var wakeLen = opt && opt.wakeLen !== undefined ? opt.wakeLen : 6, wca = Math.cos(fs.alpha), wsa = Math.sin(fs.alpha);
+    var wx0 = 0.5 * (gbx0 + gbx1), wy0 = 0.5 * (gby0 + gby1), wlo = Infinity, whi = -Infinity;
+    for (i = 0; i < Ni; i++) { var et0 = -(xn[i] - wx0) * wsa + (yn[i] - wy0) * wca; if (et0 < wlo) wlo = et0; if (et0 > whi) whi = et0; }
+    var wakeH = whi - wlo, wakeW0 = 0.75 * wakeH + 0.1, wakeSp = 0.03 + 0.07 * Math.min(1, wakeH), wakeSize = 2 * h * 1.0001;
+    function sizeOK(l, ix, iy) {
+      var s = Rs / Math.pow(2, l);
+      if (wakeLen > 0 && s > wakeSize) {
+        var dx = ox + (ix + 0.5) * s - wx0, dy = oy + (iy + 0.5) * s - wy0, xi = dx * wca + dy * wsa, et = -dx * wsa + dy * wca;
+        if (xi > -s && xi < wakeLen + s && Math.abs(et) < wakeW0 + wakeSp * Math.max(xi, 0) + s) return false;
+      }
+      return s <= Math.max(h * 1.0001, GRADE * boxDist(l, ix, iy));
+    }
+    /* clip the interface polygon to a square (Sutherland-Hodgman); returns area and area-weighted centroid sums of the part inside both */
+    var CPA = 0, CPX = 0, CPY = 0, pa1 = [], pb1 = [];
+    function clipInside(x0, y0, x1, y1) {
+      var src = pa1, dst = pb1, n, k, e, t;
+      src.length = 0; for (k = 0; k < Ni0; k++) src.push(GX[k], GY[k]);
+      for (e = 0; e < 4; e++) {
+        dst.length = 0; n = src.length;
+        for (k = 0; k < n; k += 2) {
+          var ax = src[k], ay = src[k + 1], kb = (k + 2) % n, bx = src[kb], by = src[kb + 1];
+          var da = e === 0 ? ax - x0 : e === 1 ? x1 - ax : e === 2 ? ay - y0 : y1 - ay, db = e === 0 ? bx - x0 : e === 1 ? x1 - bx : e === 2 ? by - y0 : y1 - by;
+          if (da >= 0) dst.push(ax, ay);
+          if ((da >= 0) !== (db >= 0)) { t = da / (da - db); dst.push(ax + t * (bx - ax), ay + t * (by - ay)); }
+        }
+        t = src; src = dst; dst = t;
+        if (src.length < 6) { CPA = 0; CPX = 0; CPY = 0; return; }
+      }
+      var A = 0, sx = 0, sy = 0; n = src.length;
+      for (k = 0; k < n; k += 2) { kb = (k + 2) % n; var cr = src[k] * src[kb + 1] - src[kb] * src[k + 1]; A += cr; sx += (src[k] + src[kb]) * cr; sy += (src[k + 1] + src[kb + 1]) * cr; }
+      CPA = Math.abs(A) / 2; if (CPA > 0) { CPX = sx / (3 * A) * CPA; CPY = sy / (3 * A) * CPA; } else { CPX = 0; CPY = 0; }
+    }
+    function openInts(list, startInside) {       // parts of a side that lie outside the interface curve
+      list.sort(function (a, b) { return a - b; });
+      var out = [], st = startInside, prev = 0;
+      for (var q = 0; q < list.length; q++) { if (!st && list[q] - prev > 1e-12) out.push(prev, list[q]); st = !st; prev = list[q]; }
+      if (!st && 1 - prev > 1e-12) out.push(prev, 1);
+      return out;
+    }
+    var FULL = [0, 1];
+    function classify(n) {                       // 0 fluid, 1 solid, 2 cut (record cached in ncut)
+      var s = Rs / Math.pow(2, nl[n]), x0 = ox + nix[n] * s, y0 = oy + niy[n] * s, x1 = x0 + s, y1 = y0 + s;
+      if (x0 > gbx1 || x1 < gbx0 || y0 > gby1 || y1 < gby0) { ncut[n] = null; return 0; }
+      var gam = [], cr = [[], [], [], []], g;     // sides: 0 east, 1 north, 2 west, 3 south; parameter runs toward +y or +x
+      for (g = 0; g < Ni0; g++) {
+        var g1 = g + 1 === Ni0 ? 0 : g + 1, ax = GX[g], ay = GY[g], bx = GX[g1], by = GY[g1];
+        if ((ax < x0 && bx < x0) || (ax > x1 && bx > x1) || (ay < y0 && by < y0) || (ay > y1 && by > y1)) continue;
+        var dx = bx - ax, dy = by - ay, t0 = 0, t1 = 1, ok = true, pq, k;
+        for (k = 0; k < 4 && ok; k++) {          // Liang-Barsky
+          var pp = k === 0 ? -dx : k === 1 ? dx : k === 2 ? -dy : dy, qq = k === 0 ? ax - x0 : k === 1 ? x1 - ax : k === 2 ? ay - y0 : y1 - ay;
+          if (pp === 0) { if (qq < 0) ok = false; } else { pq = qq / pp; if (pp < 0) { if (pq > t1) ok = false; else if (pq > t0) t0 = pq; } else { if (pq < t0) ok = false; else if (pq < t1) t1 = pq; } }
+        }
+        if (ok && t1 - t0 > 1e-12) gam.push(g, t0, t1);
+        var u, w;
+        if ((ax - x1) * (bx - x1) < 0) { u = (x1 - ax) / dx; w = ay + u * dy; if (w > y0 && w < y1) cr[0].push((w - y0) / s); }
+        if ((ax - x0) * (bx - x0) < 0) { u = (x0 - ax) / dx; w = ay + u * dy; if (w > y0 && w < y1) cr[2].push((w - y0) / s); }
+        if ((ay - y1) * (by - y1) < 0) { u = (y1 - ay) / dy; w = ax + u * dx; if (w > x0 && w < x1) cr[1].push((w - x0) / s); }
+        if ((ay - y0) * (by - y0) < 0) { u = (y0 - ay) / dy; w = ax + u * dx; if (w > x0 && w < x1) cr[3].push((w - x0) / s); }
+      }
+      if (!gam.length) { ncut[n] = null; return insideG(x0 + 0.5 * s, y0 + 0.5 * s) ? 1 : 0; }
+      var c00 = insideG(x0, y0), c10 = insideG(x1, y0), c01 = insideG(x0, y1);
+      clipInside(x0, y0, x1, y1);
+      var area = s * s - CPA;
+      if (!(area > 0)) area = 1e-14 * s * s;
+      var cx = (s * s * (x0 + 0.5 * s) - CPX) / area, cy = (s * s * (y0 + 0.5 * s) - CPY) / area;
+      if (!(cx >= x0 && cx <= x1 && cy >= y0 && cy <= y1)) { cx = x0 + 0.5 * s; cy = y0 + 0.5 * s; }
+      ncut[n] = { area: area, cx: cx, cy: cy, gam: gam, open: [openInts(cr[0], c10), openInts(cr[1], c01), openInts(cr[2], c00), openInts(cr[3], c00)] };
+      return 2;
+    }
+    var linProl = false;
+    function split(n) {
+      var l = nl[n] + 1, ix = 2 * nix[n], iy = 2 * niy[n], o = 15 * n, k, q, m;
+      for (k = 0; k < 4; k++) {
+        m = newNode(l, ix + (k & 1), iy + (k >> 1), n); nch[4 * n + k] = m;
+        for (q = 0; q < 15; q++) nodeQ[15 * m + q] = nodeQ[o + q];
+      }
+      leafCount += 3;
+      if (linProl && ncell[n] >= Nb && !ncut[n]) {  // linear, mass-conserving prolongation from the parent's gradient
+        var c0 = ncell[n], off = 0.25 * csz[c0], r0 = rho[c0], p0 = p[c0];
+        var dmr = off * (Math.abs(rx[c0]) + Math.abs(ry[c0])), dmp = off * (Math.abs(px[c0]) + Math.abs(py[c0]));
+        var phi = Math.min(1, 0.2 * r0 / (dmr + 1e-300), 0.2 * p0 / (dmp + 1e-300));
+        for (k = 0; k < 4; k++) {
+          var dx = (k & 1 ? off : -off) * phi, dy = (k >> 1 ? off : -off) * phi, b = 15 * nch[4 * n + k];
+          var rc = r0 + rx[c0] * dx + ry[c0] * dy, uc = u[c0] + ux[c0] * dx + uy[c0] * dy, vc = v[c0] + vx[c0] * dx + vy[c0] * dy, pc = p0 + px[c0] * dx + py[c0] * dy;
+          var e0 = rc - rho[c0], e1 = rc * uc - ru[c0], e2 = rc * vc - rv[c0], e3 = pc / GM1 + 0.5 * rc * (uc * uc + vc * vc) - rE[c0];
+          for (q = 0; q < 15; q += 5) { nodeQ[b + q] += e0; nodeQ[b + q + 1] += e1; nodeQ[b + q + 2] += e2; nodeQ[b + q + 3] += e3; }
+        }
+      }
+      ncell[n] = -1;
+      for (k = 0; k < 4; k++) { m = nch[4 * n + k]; if (classify(m) === 1) { nsol[m] = 1; leafCount--; } }
+    }
+    var NBk = 0, NBm = -1;                      // neighbour kind: 0 far field, 1 solid, 2 same-level leaf, 3 coarser leaf, 4 finer
+    function neighbour(n, dx, dy) {
+      var l = nl[n], jx = nix[n] + dx, jy = niy[n] + dy, lim = N0 * Math.pow(2, l);
+      if (jx < 0 || jy < 0 || jx >= lim || jy >= lim) { NBk = 0; NBm = -1; return; }
+      var m = map.get(key(l, jx, jy));
+      if (m !== undefined) { NBm = m; NBk = nsol[m] ? 1 : nch[4 * m] < 0 ? 2 : 4; return; }
+      for (var ll = l - 1; ll >= 0; ll--) {
+        jx >>= 1; jy >>= 1; m = map.get(key(ll, jx, jy));
+        if (m !== undefined) { NBm = m; NBk = nsol[m] ? 1 : 3; return; }
+      }
+      NBk = 0; NBm = -1;
+    }
+    var DX = [1, 0, -1, 0], DY = [0, 1, 0, -1], maxLevel = LI + 2;
+    function refine(n) {
+      if (nch[4 * n] >= 0) return true;
+      var l = nl[n], k;
+      if (l >= maxLevel || leafCount + 3 > maxQ) return false;
+      for (k = 0; k < 4; k++) { neighbour(n, DX[k], DY[k]); if (NBk === 3 && !refine(NBm)) return false; }
+      split(n); return true;
+    }
+    function coarsenOK(pn) {
+      if (!sizeOK(nl[pn], nix[pn], niy[pn])) return false;
+      for (var k = 0; k < 4; k++) {
+        var ch = nch[4 * pn + k]; if (ch < 0 || nch[4 * ch] >= 0) return false;
+        for (var q = 0; q < 4; q++) { var m = map.get(key(nl[ch], nix[ch] + DX[q], niy[ch] + DY[q])); if (m !== undefined && npar[m] !== pn && nch[4 * m] >= 0) return false; }
+      }
+      return true;
+    }
+    function coarsen(pn) {
+      var o = 15 * pn, q, k, cnt = 0, wsum = 0;
+      for (q = 0; q < 15; q++) nodeQ[o + q] = 0;
+      for (k = 0; k < 4; k++) {
+        var ch = nch[4 * pn + k];
+        if (!nsol[ch]) { var w = ncut[ch] ? ncut[ch].area : 1; cnt++; wsum += w; for (q = 0; q < 15; q++) nodeQ[o + q] += w * nodeQ[15 * ch + q]; }
+        map.delete(key(nl[ch], nix[ch], niy[ch])); freeN.push(ch); nch[4 * pn + k] = -1;
+      }
+      for (q = 0; q < 15; q++) nodeQ[o + q] /= wsum;
+      leafCount -= cnt - 1; ncell[pn] = -1;      // no cell yet: a later split of this node must not read stale gradients
+    }
+    function initTree() {
+      var stack = [], n, k;
+      nl = []; nix = []; niy = []; npar = []; nch = []; nsol = []; ncell = []; ncut = []; freeN = []; roots = []; map.clear(); leafCount = 0;
+      for (var jy = 0; jy < N0; jy++) for (var jx = 0; jx < N0; jx++) { n = newNode(0, jx, jy, -1); roots.push(n); leafCount++; if (classify(n) === 1) { nsol[n] = 1; leafCount--; } stack.push(n); }
+      while (stack.length) {
+        n = stack.pop();
+        if (nsol[n]) continue;
+        if ((ncut[n] && Rs / Math.pow(2, nl[n]) > h * 1.0001) || !sizeOK(nl[n], nix[n], niy[n])) { split(n); for (k = 0; k < 4; k++) stack.push(nch[4 * n + k]); }
+      }
+      var changed = true;
+      while (changed) {                          // 2:1 balance
+        changed = false;
+        for (n = 0; n < nl.length; n++) {
+          if (nsol[n] || nch[4 * n] >= 0 || map.get(key(nl[n], nix[n], niy[n])) !== n) continue;
+          for (k = 0; k < 4; k++) { neighbour(n, DX[k], DY[k]); if (NBk === 3 && nl[NBm] < nl[n] - 1) { split(NBm); changed = true; } }
+        }
+      }
+    }
+    for (var wtry = 0; wtry < 4; wtry++) {         // coarsen, then drop, the wake zone until it leaves room to refine
+      initTree();
+      if (leafCount <= 0.7 * maxQ || wakeLen <= 0) break;
+      if (wtry < 2) wakeSize *= 2; else wakeLen = 0;
+    }
+    var baseCount = leafCount;
+    if (leafCount > 0.8 * maxQ) throw new Error('The starting mesh already needs ' + leafCount + ' squares, which leaves too little of the ' + maxQ + ' allowed for refinement. Raise the square limit or reduce the far-field distance.');
+
+    var meshGen = 0, lvMin = 0, lvMax = 0, nSmall = 0;
+    function isSmall(n) { var r = ncut[n]; if (!r) return false; var s = Rs / Math.pow(2, nl[n]); return r.area < 0.3 * s * s; }
+    function rebuild() {                        // leaves -> cells, faces, adjacency, least-squares matrices
+      var stack = roots.slice().reverse(), n, k, q, li, leaves = [], mast = {};
+      while (stack.length) {
+        n = stack.pop();
+        if (nsol[n]) continue;
+        if (nch[4 * n] >= 0) { for (k = 3; k >= 0; k--) stack.push(nch[4 * n + k]); continue; }
+        leaves.push(n);
+      }
+      leafNodes = leaves; nC = Nb; lvMin = 99; lvMax = -99; nSmall = 0;
+      for (li = 0; li < leaves.length; li++) {   // a small cut cell joins the neighbour across its longest open side
+        n = leaves[li];
+        if (!isSmall(n)) continue;
+        var rec = ncut[n], best = 0, bk = -1;
+        for (k = 0; k < 4; k++) { var iv = rec.open[k], len = 0; for (q = 0; q < iv.length; q += 2) len += iv[q + 1] - iv[q]; if (len > best) { neighbour(n, DX[k], DY[k]); if ((NBk === 2 || NBk === 3) && !isSmall(NBm)) { best = len; bk = NBm; } } }
+        if (bk >= 0) { mast[n] = bk; nSmall++; }
+      }
+      for (li = 0; li < leaves.length; li++) {
+        n = leaves[li]; if (mast[n] !== undefined) continue;
+        var cI = nC++; ncell[n] = cI; cnode[cI] = n; csz[cI] = Rs / Math.pow(2, nl[n]); vol[cI] = 0; xc[cI] = 0; yc[cI] = 0;
+        for (q = 0; q < 15; q++) QA[q][cI] = 0;
+        irr[cI] = 0;
+        if (nl[n] < lvMin) lvMin = nl[n]; if (nl[n] > lvMax) lvMax = nl[n];
+      }
+      for (li = 0; li < leaves.length; li++) {
+        n = leaves[li]; if (mast[n] !== undefined) ncell[n] = ncell[mast[n]];
+        var s = Rs / Math.pow(2, nl[n]), r2 = ncut[n], a = r2 ? r2.area : s * s, c2 = ncell[n];
+        if (r2) irr[c2] = 1;
+        vol[c2] += a; xc[c2] += a * (r2 ? r2.cx : ox + (nix[n] + 0.5) * s); yc[c2] += a * (r2 ? r2.cy : oy + (niy[n] + 0.5) * s);
+        for (q = 0; q < 15; q++) QA[q][c2] += a * nodeQ[15 * n + q];
+      }
+      for (k = Nb; k < nC; k++) { xc[k] /= vol[k]; yc[k] /= vol[k]; for (q = 0; q < 15; q++) QA[q][k] /= vol[k]; dw[k] = wallDist(xc[k], yc[k]); }
+      nF = Fs;
+      for (li = 0; li < leaves.length; li++) {
+        n = leaves[li]; s = Rs / Math.pow(2, nl[n]); r2 = ncut[n];
+        var cQ = ncell[n], x0 = ox + nix[n] * s, y0 = oy + niy[n] * s;
+        for (k = 0; k < 4; k++) {
+          neighbour(n, DX[k], DY[k]);
+          if (NBk === 1 || NBk === 4 || (NBk === 2 && k >= 2)) continue;
+          var other = NBk === 0 ? -2 : ncell[NBm];
+          if (other === cQ) continue;
+          var ints = r2 ? r2.open[k] : FULL;
+          for (q = 0; q < ints.length; q += 2) {
+            var ln = (ints[q + 1] - ints[q]) * s, tm = 0.5 * (ints[q] + ints[q + 1]) * s;
+            fL[nF] = cQ; fR[nF] = other; fsx[nF] = DX[k] * ln; fsy[nF] = DY[k] * ln;
+            fxm[nF] = k === 0 ? x0 + s : k === 2 ? x0 : x0 + tm; fym[nF] = k === 1 ? y0 + s : k === 3 ? y0 : y0 + tm;
+            nF++;
+          }
+        }
+        if (r2) for (q = 0; q < r2.gam.length; q += 3) {         // faces onto the O-layer columns along the interface curve
+          var g = r2.gam[q], ta = r2.gam[q + 1], tb = r2.gam[q + 2], g1 = g + 1 === Ni0 ? 0 : g + 1;
+          var ex = GX[g1] - GX[g], ey = GY[g1] - GY[g], ii = segFirst[g];
+          while (ii >= 0) {
+            var pk = lines[ii].pk; if (Math.floor(pk + 1e-9) !== g) break;
+            var ca = pk - g, cb = ca + Math.pow(0.5, cols[ii].lev), lo = Math.max(ta, ca), hi = Math.min(tb, cb);
+            if (hi - lo > 1e-12) { fL[nF] = cQ; fR[nF] = (Njb - 1) * Ni + ii; fsx[nF] = ey * (hi - lo); fsy[nF] = -ex * (hi - lo); fxm[nF] = GX[g] + 0.5 * (lo + hi) * ex; fym[nF] = GY[g] + 0.5 * (lo + hi) * ey; nF++; }
+            ii = ip1[ii]; if (ii === segFirst[g]) break;
+          }
+        }
+      }
+      cs.fill(0, 0, nC + 2);
+      for (f = Fs; f < nF; f++) { cs[fL[f] + 2]++; if (fR[f] >= 0) cs[fR[f] + 2]++; }
+      for (k = 0; k < nC; k++) cs[k + 2] += cs[k + 1];
+      for (f = Fs; f < nF; f++) { var qa = cs[fL[f] + 1]++; cfa[qa] = f; cnb[qa] = fR[f]; csg[qa] = 1; if (fR[f] >= 0) { qa = cs[fR[f] + 1]++; cfa[qa] = f; cnb[qa] = fL[f]; csg[qa] = -1; } }
+      i11.fill(0, 0, nC); i12.fill(0, 0, nC); i22.fill(0, 0, nC);
+      for (f = 0; f < nF; f++) {
+        var L = fL[f], R = fR[f], dx, dy, w;
+        if (R >= 0) { dx = xc[R] - xc[L]; dy = yc[R] - yc[L]; } else { dx = 2 * (fxm[f] - xc[L]); dy = 2 * (fym[f] - yc[L]); }
+        w = 1 / (dx * dx + dy * dy);
+        i11[L] += w * dx * dx; i12[L] += w * dx * dy; i22[L] += w * dy * dy;
+        if (R >= 0) { i11[R] += w * dx * dx; i12[R] += w * dx * dy; i22[R] += w * dy * dy; }
+      }
+      for (k = 0; k < nC; k++) { var det = i11[k] * i22[k] - i12[k] * i12[k], a11 = i11[k]; i11[k] = i22[k] / det; i12[k] = -i12[k] / det; i22[k] = a11 / det; }
+      meshGen++; diagAge = 1e10;
+    }
+
+    /* ---- freestream and controls ---- */
+    var mach, alpha, Re, turb, muInf, Sst, uInf, vInf, pInf = 1 / GAM, ntInf, qInf;
+    function setFreestream(s) {
+      mach = s.mach; alpha = s.alpha; Re = s.Re; turb = !!s.turbulent;
+      muInf = mach / Re; Sst = 110.4 / s.Tinf; uInf = mach * Math.cos(alpha); vInf = mach * Math.sin(alpha);
+      ntInf = turb ? 3 * muInf : 0; qInf = 0.5 * mach * mach;
+    }
+    setFreestream(fs);
+    var ctl = { unsteady: true, dt: 0.02, maxInner: 12, innerTol: 0.03, cflMax: 1000, sweeps: 1, qsweeps: 1, predict: false, jacEps: 0.25, freeze: 1, adapt: true, sensor: 'rho', threshold: 0.03, levels: 2, adaptEvery: 5 };
+    var S = { time: 0, step: 0, iters: 0, inner: 0, res: 0, res0: 1, resRel: 1, cl: 0, cd: 0, cm: 0, cdp: 0, cdf: 0, ypMax: 0, diverged: false, limited: 0, lastInner: 0 };
+    var bdf2 = false, lastDt = -1, a0 = 0, a1 = 0, a2 = 0, cfl = 1;
+
+    function initCell(k) {
+      var damp = 1 - Math.exp(-dw[k] / 0.02);
+      var pert = 0.03 * mach * Math.exp(-((xc[k] - 1.2) * (xc[k] - 1.2) + (yc[k] - 0.1) * (yc[k] - 0.1)) / 0.3);
+      rho[k] = 1; ru[k] = uInf * damp; rv[k] = (vInf + pert) * damp; rE[k] = pInf / GM1 + 0.5 * (ru[k] * ru[k] + rv[k] * rv[k]); nt[k] = ntInf;
+    }
+    function init() {
+      for (var k = 0; k < nC; k++) initCell(k);
+      S.time = 0; S.step = 0; S.iters = 0; S.inner = 0; S.diverged = false; bdf2 = false; lastDt = -1; cfl = 1;
+    }
+    function lim(a, b) { var ab = a * b; return ab > 0 ? (a * (b * b + 1e-7) + b * (a * a + 1e-7)) / (a * a + b * b + 2e-7) : 0; }
+
+    var RB = 1, UB = 0, VB = 0, PB = 1, NTB = 0;
+    function farState(L, nx, ny) {
+      var ri = rho[L], ui = u[L], vi = v[L], pi = p[L], cI = Math.sqrt(GAM * pi / ri);
+      var vni = ui * nx + vi * ny, vnf = uInf * nx + vInf * ny;
+      if (vni >= cI) { RB = ri; UB = ui; VB = vi; PB = pi; NTB = nt[L]; }
+      else if (vnf <= -1 && vni <= -cI) { RB = 1; UB = uInf; VB = vInf; PB = pInf; NTB = ntInf; }
+      else {
+        var Rp = vni + 2 * cI / GM1, Rm = vnf - 2 / GM1, vnb = 0.5 * (Rp + Rm), cb = 0.25 * GM1 * (Rp - Rm), sE;
+        if (vnb > 0) { sE = pi / Math.pow(ri, GAM); UB = ui + (vnb - vni) * nx; VB = vi + (vnb - vni) * ny; NTB = nt[L]; }
+        else { sE = pInf; UB = uInf + (vnb - vnf) * nx; VB = vInf + (vnb - vnf) * ny; NTB = ntInf; }
+        RB = Math.pow(cb * cb / (GAM * sE), 1 / GM1); PB = RB * cb * cb / GAM;
+      }
+    }
+    function primitives() {
+      for (var k = 0; k < nC; k++) {
+        var r = rho[k], uu = ru[k] / r, vv = rv[k] / r, pp = GM1 * (rE[k] - 0.5 * r * (uu * uu + vv * vv)), tt = GAM * pp / r;
+        u[k] = uu; v[k] = vv; p[k] = pp; T[k] = tt; mu[k] = muInf * tt * Math.sqrt(tt) * (1 + Sst) / (tt + Sst);
+        if (turb) { var chi = nt[k] * r / mu[k], c3 = chi * chi * chi; mut[k] = r * nt[k] * c3 / (c3 + CV13); } else mut[k] = 0;
+      }
+    }
+    function gradients() {                      // weighted least squares over face neighbours
+      rx.fill(0, 0, nC); ry.fill(0, 0, nC); ux.fill(0, 0, nC); uy.fill(0, 0, nC); vx.fill(0, 0, nC); vy.fill(0, 0, nC); px.fill(0, 0, nC); py.fill(0, 0, nC);
+      var k, L, R, dx, dy, w, q;
+      for (k = 0; k < nF; k++) {
+        L = fL[k]; R = fR[k];
+        if (R >= 0) {
+          dx = xc[R] - xc[L]; dy = yc[R] - yc[L]; w = 1 / (dx * dx + dy * dy); dx *= w; dy *= w;
+          q = rho[R] - rho[L]; rx[L] += q * dx; ry[L] += q * dy; rx[R] += q * dx; ry[R] += q * dy;
+          q = u[R] - u[L]; ux[L] += q * dx; uy[L] += q * dy; ux[R] += q * dx; uy[R] += q * dy;
+          q = v[R] - v[L]; vx[L] += q * dx; vy[L] += q * dy; vx[R] += q * dx; vy[R] += q * dy;
+          q = p[R] - p[L]; px[L] += q * dx; py[L] += q * dy; px[R] += q * dx; py[R] += q * dy;
+        } else {
+          dx = 2 * (fxm[k] - xc[L]); dy = 2 * (fym[k] - yc[L]); w = 1 / (dx * dx + dy * dy); dx *= w; dy *= w;
+          if (R === -1) { q = -2 * u[L]; ux[L] += q * dx; uy[L] += q * dy; q = -2 * v[L]; vx[L] += q * dx; vy[L] += q * dy; }
+          else {
+            var sa = Math.sqrt(fsx[k] * fsx[k] + fsy[k] * fsy[k]); farState(L, fsx[k] / sa, fsy[k] / sa);
+            q = RB - rho[L]; rx[L] += q * dx; ry[L] += q * dy; q = UB - u[L]; ux[L] += q * dx; uy[L] += q * dy;
+            q = VB - v[L]; vx[L] += q * dx; vy[L] += q * dy; q = PB - p[L]; px[L] += q * dx; py[L] += q * dy;
+          }
+        }
+      }
+      for (k = 0; k < nC; k++) {
+        var a = i11[k], b = i12[k], c2 = i22[k], g1, g2;
+        g1 = rx[k]; g2 = ry[k]; rx[k] = a * g1 + b * g2; ry[k] = b * g1 + c2 * g2;
+        g1 = ux[k]; g2 = uy[k]; ux[k] = a * g1 + b * g2; uy[k] = b * g1 + c2 * g2;
+        g1 = vx[k]; g2 = vy[k]; vx[k] = a * g1 + b * g2; vy[k] = b * g1 + c2 * g2;
+        g1 = px[k]; g2 = py[k]; px[k] = a * g1 + b * g2; py[k] = b * g1 + c2 * g2;
+      }
+    }
+
+    function residual() {
+      var tp0 = now(); primitives(); gradients(); var tp1 = now(); PF.grad += tp1 - tp0;
+      R0.fill(0, 0, nC); R1.fill(0, 0, nC); R2.fill(0, 0, nC); R3.fill(0, 0, nC); R4.fill(0, 0, nC); Dm.fill(0, 0, nC);
+      var fx = 0, fy = 0, fxp = 0, fyp = 0, mz = 0, ypm = 0, k, jeps = Math.min(1, Math.max(0.02, ctl.jacEps));
+      for (k = 0; k < nF; k++) {
+        var L = fL[k], R = fR[k], sx = fsx[k], sy = fsy[k], Sa = Math.sqrt(sx * sx + sy * sy), nx = sx / Sa, ny = sy / Sa;
+        var rL = rho[L], uL = u[L], vL = v[L], pL = p[L], rR, uR, vR, pR, f0, f1, f2, f3, ex, ey, d, dn, LAM, UNS, DIF = 0;
+        var muf, mtf, uf, vf, gux, guy, gvx, gvy, gTx, gTy, co, tvx = 0, tvy = 0;
+        if (R === -1) {                          // adiabatic no-slip wall
+          ex = fxm[k] - xc[L]; ey = fym[k] - yc[L]; d = Math.sqrt(ex * ex + ey * ey); ex /= d; ey /= d; dn = d * Math.abs(ex * nx + ey * ny);
+          muf = mu[L];
+          gux = ux[L]; guy = uy[L]; co = gux * ex + guy * ey + uL / d; gux -= co * ex; guy -= co * ey;
+          gvx = vx[L]; gvy = vy[L]; co = gvx * ex + gvy * ey + vL / d; gvx -= co * ex; gvy -= co * ey;
+          var txx = muf * (4 / 3 * gux - 2 / 3 * gvy), tyy = muf * (4 / 3 * gvy - 2 / 3 * gux), txy = muf * (guy + gvx);
+          tvx = txx * nx + txy * ny; tvy = txy * nx + tyy * ny;
+          f0 = 0; f1 = (pL * nx - tvx) * Sa; f2 = (pL * ny - tvy) * Sa; f3 = 0;
+          LAM = Sa * (1.05 * Math.sqrt(GAM * pL / rL) + 2 * Math.max(4 / 3, GAM / PR) * muf / (rL * dn)); UNS = 0;
+          if (turb) {
+            var nw = muf / rL, G = Sa / dn, cw = ((1 + CB2) * nw - CB2 * (nw + nt[L])) / SIG * G; if (cw < 0) cw = 0;
+            R4[L] -= cw * nt[L]; DIF = (1 + CB2) * nw / SIG * G;
+          }
+          var iw = k - FW0, tx = ny, ty = -nx; if (tx < 0) { tx = -tx; ty = -ty; }
+          fx += f1; fy += f2; fxp += pL * sx; fyp += pL * sy; mz += (xw[iw] - 0.25) * f2 - yw[iw] * f1;
+          cpw[iw] = (pL - pInf) / qInf; cfw[iw] = -(tvx * tx + tvy * ty) / qInf;
+          var yp = rL * Math.sqrt(Math.sqrt(tvx * tvx + tvy * tvy) / rL) * dw[L] / muf; ypw[iw] = yp; if (yp > ypm) ypm = yp;
+          R1[L] -= f1; R2[L] -= f2; Dm[L] += 0.5 * LAM; lam[k] = LAM; uns[k] = 0; dif[k] = DIF;
+          continue;
+        }
+        if (R === -2) { farState(L, nx, ny); rR = RB; uR = UB; vR = VB; pR = PB; }
+        else {
+          rR = rho[R]; uR = u[R]; vR = v[R]; pR = p[R];
+          ex = xc[R] - xc[L]; ey = yc[R] - yc[L]; d = Math.sqrt(ex * ex + ey * ey); ex /= d; ey /= d;
+          var thL = ((fxm[k] - xc[L]) * ex + (fym[k] - yc[L]) * ey) / d; thL = thL < 0 ? 0 : thL > 1 ? 1 : thL; var thR = 1 - thL;
+          var ar = 2 * d * (rx[L] * ex + ry[L] * ey) - (rR - rL), br = 2 * d * (rx[R] * ex + ry[R] * ey) - (rR - rL);
+          var ap = 2 * d * (px[L] * ex + py[L] * ey) - (pR - pL), bp = 2 * d * (px[R] * ex + py[R] * ey) - (pR - pL);
+          var au = 2 * d * (ux[L] * ex + uy[L] * ey) - (uR - uL), bu = 2 * d * (ux[R] * ex + uy[R] * ey) - (uR - uL);
+          var av = 2 * d * (vx[L] * ex + vy[L] * ey) - (vR - vL), bv = 2 * d * (vx[R] * ex + vy[R] * ey) - (vR - vL);
+          if (k < FW0) {                         // inside the O-layers use the structured neighbours, as on the static mesh
+            var LL = -1, RR = -1, wallL = false;
+            if (k < FJ0) { var ii2 = k % Ni, j0 = k - ii2; LL = j0 + im1[im1[ii2]]; RR = j0 + ip1[ii2]; }
+            else { if (L >= Ni) LL = L - Ni; else wallL = true; if (R + Ni < Nb) RR = R + Ni; }
+            thL = thR = 0.5;
+            if (LL >= 0) { ar = rL - rho[LL]; ap = pL - p[LL]; au = uL - u[LL]; av = vL - v[LL]; }
+            else if (wallL) { ar = 0; ap = 0; au = 2 * uL; av = 2 * vL; }
+            if (RR >= 0) { br = rho[RR] - rR; bp = p[RR] - pR; bu = u[RR] - uR; bv = v[RR] - vR; }
+          }
+          var r1, r2, p1, p2, u1, u2, v1, v2, dc;
+          if (k >= Fs && (irr[L] || irr[R])) {     // cut cells: extrapolate to the face point itself and keep the value between the two cell values
+            var xl = fxm[k] - xc[L], yl = fym[k] - yc[L], xr = fxm[k] - xc[R], yr = fym[k] - yc[R], lo2, hi2;
+            lo2 = rL < rR ? rL : rR; hi2 = rL < rR ? rR : rL; r1 = rL + rx[L] * xl + ry[L] * yl; r1 = r1 < lo2 ? lo2 : r1 > hi2 ? hi2 : r1; r2 = rR + rx[R] * xr + ry[R] * yr; r2 = r2 < lo2 ? lo2 : r2 > hi2 ? hi2 : r2;
+            lo2 = pL < pR ? pL : pR; hi2 = pL < pR ? pR : pL; p1 = pL + px[L] * xl + py[L] * yl; p1 = p1 < lo2 ? lo2 : p1 > hi2 ? hi2 : p1; p2 = pR + px[R] * xr + py[R] * yr; p2 = p2 < lo2 ? lo2 : p2 > hi2 ? hi2 : p2;
+            lo2 = uL < uR ? uL : uR; hi2 = uL < uR ? uR : uL; u1 = uL + ux[L] * xl + uy[L] * yl; u1 = u1 < lo2 ? lo2 : u1 > hi2 ? hi2 : u1; u2 = uR + ux[R] * xr + uy[R] * yr; u2 = u2 < lo2 ? lo2 : u2 > hi2 ? hi2 : u2;
+            lo2 = vL < vR ? vL : vR; hi2 = vL < vR ? vR : vL; v1 = vL + vx[L] * xl + vy[L] * yl; v1 = v1 < lo2 ? lo2 : v1 > hi2 ? hi2 : v1; v2 = vR + vx[R] * xr + vy[R] * yr; v2 = v2 < lo2 ? lo2 : v2 > hi2 ? hi2 : v2;
+            rL = r1; rR = r2; pL = p1; pR = p2; uL = u1; uR = u2; vL = v1; vR = v2;
+          } else {
+          dc = rR - rL; r1 = rL + thL * lim(ar, dc); r2 = rR - thR * lim(br, dc);
+          dc = pR - pL; p1 = pL + thL * lim(ap, dc); p2 = pR - thR * lim(bp, dc);
+          if (r1 > 0 && r2 > 0 && p1 > 0 && p2 > 0) {
+            dc = uR - uL; u1 = uL + thL * lim(au, dc); u2 = uR - thR * lim(bu, dc);
+            dc = vR - vL; v1 = vL + thL * lim(av, dc); v2 = vR - thR * lim(bv, dc);
+            rL = r1; rR = r2; pL = p1; pR = p2; uL = u1; uR = u2; vL = v1; vR = v2;
+          }
+          }
+        }
+        var unL = uL * nx + vL * ny, unR = uR * nx + vR * ny, cL2 = Math.sqrt(GAM * pL / rL), cR2 = Math.sqrt(GAM * pR / rR);
+        var EL = pL / GM1 + 0.5 * rL * (uL * uL + vL * vL), ER = pR / GM1 + 0.5 * rR * (uR * uR + vR * vR);
+        var sqL = Math.sqrt(rL), sqR = Math.sqrt(rR), iw2 = 1 / (sqL + sqR), ut = (sqL * uL + sqR * uR) * iw2, vt = (sqL * vL + sqR * vR) * iw2;
+        var Ht = (sqL * (EL + pL) / rL + sqR * (ER + pR) / rR) * iw2, unt = ut * nx + vt * ny, ct = Math.sqrt(Math.max(GM1 * (Ht - 0.5 * (ut * ut + vt * vt)), 1e-12));
+        var SL = Math.min(unL - cL2, unt - ct), SR = Math.max(unR + cR2, unt + ct);
+        if (SL >= 0) { f0 = rL * unL; f1 = f0 * uL + pL * nx; f2 = f0 * vL + pL * ny; f3 = (EL + pL) * unL; }
+        else if (SR <= 0) { f0 = rR * unR; f1 = f0 * uR + pR * nx; f2 = f0 * vR + pR * ny; f3 = (ER + pR) * unR; }
+        else {
+          var SS = (pR - pL + rL * unL * (SL - unL) - rR * unR * (SR - unR)) / (rL * (SL - unL) - rR * (SR - unR)), kk, m0;
+          if (SS >= 0) {
+            kk = rL * (SL - unL) / (SL - SS); m0 = rL * unL; f0 = m0 + SL * (kk - rL);
+            f1 = m0 * uL + pL * nx + SL * (kk * (uL + (SS - unL) * nx) - rL * uL); f2 = m0 * vL + pL * ny + SL * (kk * (vL + (SS - unL) * ny) - rL * vL);
+            f3 = (EL + pL) * unL + SL * (kk * (EL / rL + (SS - unL) * (SS + pL / (rL * (SL - unL)))) - EL);
+          } else {
+            kk = rR * (SR - unR) / (SR - SS); m0 = rR * unR; f0 = m0 + SR * (kk - rR);
+            f1 = m0 * uR + pR * nx + SR * (kk * (uR + (SS - unR) * nx) - rR * uR); f2 = m0 * vR + pR * ny + SR * (kk * (vR + (SS - unR) * ny) - rR * vR);
+            f3 = (ER + pR) * unR + SR * (kk * (ER / rR + (SS - unR) * (SS + pR / (rR * (SR - unR)))) - ER);
+          }
+        }
+        if (R === -2) {
+          UNS = (UB * nx + VB * ny) * Sa; LAM = Sa * 1.05 * (Math.abs(UB * nx + VB * ny) + Math.sqrt(GAM * PB / RB));
+          if (turb) R4[L] -= Math.min(UNS, 0) * (NTB - nt[L]);
+          R0[L] -= f0 * Sa; R1[L] -= f1 * Sa; R2[L] -= f2 * Sa; R3[L] -= f3 * Sa; Dm[L] += 0.5 * LAM; lam[k] = LAM; uns[k] = UNS; dif[k] = 0;
+          continue;
+        }
+        dn = d * Math.abs(ex * nx + ey * ny);
+        muf = 0.5 * (mu[L] + mu[R]); mtf = 0.5 * (mut[L] + mut[R]); uf = 0.5 * (u[L] + u[R]); vf = 0.5 * (v[L] + v[R]);
+        gux = 0.5 * (ux[L] + ux[R]); guy = 0.5 * (uy[L] + uy[R]); co = gux * ex + guy * ey - (u[R] - u[L]) / d; gux -= co * ex; guy -= co * ey;
+        gvx = 0.5 * (vx[L] + vx[R]); gvy = 0.5 * (vy[L] + vy[R]); co = gvx * ex + gvy * ey - (v[R] - v[L]) / d; gvx -= co * ex; gvy -= co * ey;
+        gTx = 0.5 * GAM * ((px[L] - p[L] * rx[L] / rho[L]) / rho[L] + (px[R] - p[R] * rx[R] / rho[R]) / rho[R]);
+        gTy = 0.5 * GAM * ((py[L] - p[L] * ry[L] / rho[L]) / rho[L] + (py[R] - p[R] * ry[R] / rho[R]) / rho[R]);
+        co = gTx * ex + gTy * ey - (T[R] - T[L]) / d; gTx -= co * ex; gTy -= co * ey;
+        var mue = muf + mtf, kc = (muf / PR + mtf / PRT) / GM1;
+        txx = mue * (4 / 3 * gux - 2 / 3 * gvy); tyy = mue * (4 / 3 * gvy - 2 / 3 * gux); txy = mue * (guy + gvx);
+        f1 -= txx * nx + txy * ny; f2 -= txy * nx + tyy * ny; f3 -= (uf * txx + vf * txy + kc * gTx) * nx + (uf * txy + vf * tyy + kc * gTy) * ny;
+        f0 *= Sa; f1 *= Sa; f2 *= Sa; f3 *= Sa;
+        R0[L] -= f0; R1[L] -= f1; R2[L] -= f2; R3[L] -= f3; R0[R] += f0; R1[R] += f1; R2[R] += f2; R3[R] += f3;
+        var rf = 0.5 * (rho[L] + rho[R]), cf2 = Math.sqrt(GAM * 0.5 * (p[L] + p[R]) / rf);
+        UNS = (uf * nx + vf * ny) * Sa;
+        var lvf = Math.max(4 / 3 * mue, GAM * (muf / PR + mtf / PRT)) / (rf * dn), unf = uf * nx + vf * ny;
+        LAM = Sa * (1.05 * (Math.abs(unf) + cf2) + 2 * lvf);
+        var mfl = (Math.sqrt(uf * uf + vf * vf) / cf2 - 0.3) * 2.5, je = mfl <= 0 ? jeps : mfl >= 1 ? 1 : jeps + (1 - jeps) * mfl;
+        je += 4 * Math.abs(p[R] - p[L]) / (p[R] + p[L]) + 2 * (Math.abs(u[R] - u[L]) + Math.abs(v[R] - v[L])) / cf2; if (je > 1 || k < Fs) je = 1;   // and wherever the flow is not smooth across the face, and inside the O-layers, where the line solves already do the work   // true wave speeds at low Mach, one robust scalar once the flow nears sonic
+        var ee = je * (Math.abs(unf) + cf2), l1 = Math.abs(unf - cf2), l2 = Math.abs(unf), l3 = Math.abs(unf + cf2);   // wave speeds for the implicit operator, floored
+        if (l1 < ee) l1 = ee; if (l2 < ee) l2 = ee; if (l3 < ee) l3 = ee;
+        var fb = 16 * k, s1v = 1.05 * (0.5 * (l1 + l3) - l2) * Sa, s2v = 1.05 * 0.5 * (l3 - l1) * Sa;
+        FI[fb] = uf; FI[fb + 1] = vf; FI[fb + 2] = nx; FI[fb + 3] = ny; FI[fb + 4] = 1.05 * l2 * Sa; FI[fb + 5] = s1v; FI[fb + 6] = s2v; FI[fb + 7] = s1v / (cf2 * cf2); FI[fb + 8] = s2v / cf2;
+        FI[fb + 9] = cf2 * cf2 / GM1 + 0.5 * (uf * uf + vf * vf); FI[fb + 10] = lvf * Sa; FI[fb + 11] = cf2; FI[fb + 12] = sx; FI[fb + 13] = sy;
+        if (turb) {
+          var ntL = nt[L], ntR = nt[R], nL = mu[L] / rho[L] + ntL, nR = mu[R] / rho[R] + ntR, nf = 0.5 * (nL + nR), G2 = Sa / dn, dnt = ntR - ntL;
+          var cLc = ((1 + CB2) * nf - CB2 * nL) / SIG * G2, cRc = ((1 + CB2) * nf - CB2 * nR) / SIG * G2;
+          if (cLc < 0) cLc = 0; if (cRc < 0) cRc = 0;
+          R4[L] += (cLc - Math.min(UNS, 0)) * dnt; R4[R] -= (cRc + Math.max(UNS, 0)) * dnt; DIF = (1 + CB2) * nf / SIG * G2;
+        }
+        Dm[L] += 0.5 * LAM; Dm[R] += 0.5 * LAM; lam[k] = LAM; uns[k] = UNS; dif[k] = DIF;
+      }
+      var tp2 = now(); PF.flux += tp2 - tp1;
+      var ca = Math.cos(alpha), sa2 = Math.sin(alpha);
+      S.cl = (fy * ca - fx * sa2) / qInf; S.cd = (fx * ca + fy * sa2) / qInf; S.cm = -mz / qInf;
+      S.cdp = (fxp * ca + fyp * sa2) / qInf; S.cdf = S.cd - S.cdp; S.ypMax = ypm;
+      var sum = 0, un2 = ctl.unsteady;
+      for (k = 0; k < nC; k++) {
+        var V = vol[k];
+        if (turb) {
+          var om = Math.abs(vx[k] - uy[k]), dd = dw[k], nu = mu[k] / rho[k], ntc = nt[k] > 0 ? nt[k] : 0;
+          var chi = ntc / nu, c3 = chi * chi * chi, fv1 = c3 / (c3 + CV13), fv2 = 1 - chi / (1 + chi * fv1);
+          var inv = 1 / (KAP * KAP * dd * dd), St = om + ntc * fv2 * inv; if (St < 0.3 * om) St = 0.3 * om;
+          var r = St > 1e-14 ? Math.min(ntc * inv / St, 10) : 10, rr2 = r * r, g = r + CW2 * (rr2 * rr2 * rr2 - r), g2 = g * g;
+          var fwv = g * Math.pow((1 + CW36) / (g2 * g2 * g2 + CW36), 1 / 6);
+          R4[k] += V * (CB1 * St * ntc - CW1 * fwv * ntc * ntc / (dd * dd)); srcJ[k] = V * 2 * CW1 * fwv * ntc / (dd * dd);
+        }
+        if (un2) {
+          R0[k] -= V * (a0 * rho[k] - a1 * Qn[0][k] + a2 * Qm[0][k]); R1[k] -= V * (a0 * ru[k] - a1 * Qn[1][k] + a2 * Qm[1][k]);
+          R2[k] -= V * (a0 * rv[k] - a1 * Qn[2][k] + a2 * Qm[2][k]); R3[k] -= V * (a0 * rE[k] - a1 * Qn[3][k] + a2 * Qm[3][k]);
+          R4[k] -= V * (a0 * nt[k] - a1 * Qn[4][k] + a2 * Qm[4][k]);
+        }
+        var rr = R0[k] / V; sum += rr * rr;
+      }
+      S.res = Math.sqrt(sum / nC); PF.src += now() - tp2; PF.n++;
+    }
+
+    /* ---- implicit: wall-normal line solves in the O-layers, point Gauss-Seidel on the squares ---- */
+    var a_r = 0, a_1 = 0, a_2 = 0, a_3 = 0;
+    var o0 = 0, o1 = 0, o2 = 0, o3 = 0;
+    function offDiag(cn, sg, f2) {               // adds -0.5 (A(Q_n) - |A_f|) S dQ_n + viscous part, both linear in the neighbour's update
+      var cb = 8 * cn, q0 = DQ[cb], q1 = DQ[cb + 1], q2 = DQ[cb + 2], q3 = DQ[cb + 3];
+      if (q0 === 0 && q1 === 0 && q2 === 0 && q3 === 0) return;
+      var fb = 16 * f2, uu = FI[fb], vv = FI[fb + 1], nx = FI[fb + 2], ny = FI[fb + 3], un = uu * nx + vv * ny, l2 = FI[fb + 4] + 2 * FI[fb + 10], s2c = FI[fb + 8];
+      var dp = GM1 * (0.5 * (uu * uu + vv * vv) * q0 - uu * q1 - vv * q2 + q3), du = q1 * nx + q2 * ny - un * q0;
+      var e1 = FI[fb + 7] * dp + s2c * du, e2 = FI[fb + 5] * du + s2c * dp, sx = sg * FI[fb + 12], sy = sg * FI[fb + 13];
+      var un2 = DQ[cb + 4], vn = DQ[cb + 5], mn = q1 * sx + q2 * sy, uS = un2 * sx + vn * sy, dm = mn - uS * q0;
+      var dpn = GM1 * (0.5 * (un2 * un2 + vn * vn) * q0 - un2 * q1 - vn * q2 + q3);
+      a_r += 0.5 * (l2 * q0 + e1 - mn);
+      a_1 += 0.5 * (l2 * q1 + e1 * uu + e2 * nx - (q1 * uS + un2 * dm + dpn * sx));
+      a_2 += 0.5 * (l2 * q2 + e1 * vv + e2 * ny - (q2 * uS + vn * dm + dpn * sy));
+      a_3 += 0.5 * (l2 * q3 + e1 * FI[fb + 9] + e2 * un - ((q3 + dpn) * uS + DQ[cb + 6] * dm));
+    }
+    var AM = F64(16);
+    function absM(f2) {                          // AM = |A| S at a face, as a matrix
+      var fb = 16 * f2, uu = FI[fb], vv = FI[fb + 1], nx = FI[fb + 2], ny = FI[fb + 3], un = uu * nx + vv * ny, l2 = FI[fb + 4], H = FI[fb + 9];
+      var s1c = FI[fb + 7], s2c = FI[fb + 8], s1 = FI[fb + 5];
+      var a0 = GM1 * 0.5 * (uu * uu + vv * vv), a1 = -GM1 * uu, a2 = -GM1 * vv, a3 = GM1;      // pressure functional
+      var w0 = s1c * a0 - s2c * un, w1 = s1c * a1 + s2c * nx, w2 = s1c * a2 + s2c * ny, w3 = s1c * a3;   // multiplies [1,u,v,H]
+      var z0 = -s1 * un + s2c * a0, z1 = s1 * nx + s2c * a1, z2 = s1 * ny + s2c * a2, z3 = s2c * a3;    // multiplies [0,nx,ny,un]
+      AM[0] = l2 + w0; AM[1] = w1; AM[2] = w2; AM[3] = w3;
+      AM[4] = uu * w0 + nx * z0; AM[5] = l2 + uu * w1 + nx * z1; AM[6] = uu * w2 + nx * z2; AM[7] = uu * w3 + nx * z3;
+      AM[8] = vv * w0 + ny * z0; AM[9] = vv * w1 + ny * z1; AM[10] = l2 + vv * w2 + ny * z2; AM[11] = vv * w3 + ny * z3;
+      AM[12] = H * w0 + un * z0; AM[13] = H * w1 + un * z1; AM[14] = H * w2 + un * z2; AM[15] = l2 + H * w3 + un * z3;
+    }
+    function diagPass(ic) {                      // 4x4 diagonal blocks: sum of face dissipation matrices, inverted once for the squares
+      var k, r, q, L, R, b;
+      DG.fill(0, 0, 16 * nC);
+      for (k = 0; k < nF; k++) {
+        L = fL[k]; R = fR[k];
+        if (R < 0) { var hl = 0.5 * lam[k]; b = 16 * L; DG[b] += hl; DG[b + 5] += hl; DG[b + 10] += hl; DG[b + 15] += hl; continue; }
+        var bl = 16 * L, br = 16 * R, lv = FI[16 * k + 10];
+        absM(k);
+        for (q = 0; q < 16; q++) { var hm = 0.5 * AM[q]; DG[bl + q] += hm; DG[br + q] += hm; }
+        DG[bl] += lv; DG[bl + 5] += lv; DG[bl + 10] += lv; DG[bl + 15] += lv; DG[br] += lv; DG[br + 5] += lv; DG[br + 10] += lv; DG[br + 15] += lv;
+      }
+      for (k = Nb; k < nC; k++) {
+        b = 16 * k; var ds = Dm[k] * ic + vol[k] * a0;
+        for (r = 0; r < 16; r++) DP[r] = DG[b + r];
+        DP[0] += ds; DP[5] += ds; DP[10] += ds; DP[15] += ds;
+        inv4();
+        for (r = 0; r < 16; r++) DI[b + r] = INV[r];
+      }
+    }
+    function jacF(cn, sx, sy, f2) {              // 0.5 * A(Q; S) - 0.5 |A_f| S - viscous part, for the line solves
+      jac(cn, sx, sy, 0, 1); absM(f2);
+      for (var q = 0; q < 16; q++) JM[q] -= 0.5 * AM[q];
+      var lv = FI[16 * f2 + 10]; JM[0] -= lv; JM[5] -= lv; JM[10] -= lv; JM[15] -= lv;
+    }
+    var JM = F64(16), DP = F64(16), INV = F64(16), WW = F64(16 * Njb), GG = F64(4 * Njb), TA = F64(Njb), TB = F64(Njb);
+    function jac(cn, sx, sy, lm, sg) {          // 0.5 * (A(Q; S) - lam I); sg = -1 evaluates the mirrored wall state
+      var uu = sg * u[cn], vv = sg * v[cn], r = rho[cn], pp = p[cn], q2 = uu * uu + vv * vv, phi = 0.5 * GM1 * q2;
+      var H = (pp / GM1 + 0.5 * r * q2 + pp) / r, un = uu * sx + vv * sy, hl = 0.5 * lm;
+      JM[0] = -hl; JM[1] = 0.5 * sx; JM[2] = 0.5 * sy; JM[3] = 0;
+      JM[4] = 0.5 * (phi * sx - uu * un); JM[5] = 0.5 * (un + (2 - GAM) * uu * sx) - hl; JM[6] = 0.5 * (uu * sy - GM1 * vv * sx); JM[7] = 0.5 * GM1 * sx;
+      JM[8] = 0.5 * (phi * sy - vv * un); JM[9] = 0.5 * (vv * sx - GM1 * uu * sy); JM[10] = 0.5 * (un + (2 - GAM) * vv * sy) - hl; JM[11] = 0.5 * GM1 * sy;
+      JM[12] = 0.5 * (phi - H) * un; JM[13] = 0.5 * (H * sx - GM1 * uu * un); JM[14] = 0.5 * (H * sy - GM1 * vv * un); JM[15] = 0.5 * GAM * un - hl;
+    }
+    function inv4() {                            // INV = DP^-1 by cofactors
+      var m = DP, o = INV;
+      var a00 = m[0], a01 = m[1], a02 = m[2], a03 = m[3], a10 = m[4], a11 = m[5], a12 = m[6], a13 = m[7], a20 = m[8], a21 = m[9], a22 = m[10], a23 = m[11], a30 = m[12], a31 = m[13], a32 = m[14], a33 = m[15];
+      var b00 = a00 * a11 - a01 * a10, b01 = a00 * a12 - a02 * a10, b02 = a00 * a13 - a03 * a10, b03 = a01 * a12 - a02 * a11, b04 = a01 * a13 - a03 * a11, b05 = a02 * a13 - a03 * a12;
+      var b06 = a20 * a31 - a21 * a30, b07 = a20 * a32 - a22 * a30, b08 = a20 * a33 - a23 * a30, b09 = a21 * a32 - a22 * a31, b10 = a21 * a33 - a23 * a31, b11 = a22 * a33 - a23 * a32;
+      var det = 1 / (b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06);
+      o[0] = (a11 * b11 - a12 * b10 + a13 * b09) * det; o[1] = (a02 * b10 - a01 * b11 - a03 * b09) * det; o[2] = (a31 * b05 - a32 * b04 + a33 * b03) * det; o[3] = (a22 * b04 - a21 * b05 - a23 * b03) * det;
+      o[4] = (a12 * b08 - a10 * b11 - a13 * b07) * det; o[5] = (a00 * b11 - a02 * b08 + a03 * b07) * det; o[6] = (a32 * b02 - a30 * b05 - a33 * b01) * det; o[7] = (a20 * b05 - a22 * b02 + a23 * b01) * det;
+      o[8] = (a10 * b10 - a11 * b08 + a13 * b06) * det; o[9] = (a01 * b08 - a00 * b10 - a03 * b06) * det; o[10] = (a30 * b04 - a31 * b02 + a33 * b00) * det; o[11] = (a21 * b02 - a20 * b04 - a23 * b00) * det;
+      o[12] = (a11 * b07 - a10 * b09 - a12 * b06) * det; o[13] = (a00 * b09 - a01 * b07 + a02 * b06) * det; o[14] = (a31 * b01 - a30 * b03 - a32 * b00) * det; o[15] = (a20 * b03 - a21 * b01 + a22 * b00) * det;
+    }
+    function dynOff(cI) {                       // neighbours across the adaptive faces
+      for (var q = cs[cI], qe = cs[cI + 1]; q < qe; q++) { var nb = cnb[q]; if (nb >= 0) offDiag(nb, csg[q], cfa[q]); }
+    }
+    var LLo = F64(16 * NiMax * Njb), LIn = F64(16 * NiMax * Njb), LWu = F64(16 * NiMax * Njb);
+    function factorLines(ic) {                   // block-tridiagonal factors along every wall-normal line, kept for the inner iterations of a step
+      var ii, jj, k, r, cI, fj, b, bp;
+      for (ii = 0; ii < Ni; ii++) for (jj = 0; jj < Njb; jj++) {
+        cI = jj * Ni + ii; b = 16 * cI;
+        var ds = Dm[cI] * ic + vol[cI] * a0;
+        for (k = 0; k < 16; k++) DP[k] = DG[b + k];
+        DP[0] += ds; DP[5] += ds; DP[10] += ds; DP[15] += ds;
+        if (jj === 0) {
+          fj = FW0 + ii; jac(cI, fsx[fj], fsy[fj], lam[fj], -1);
+          for (r = 0; r < 4; r++) { DP[r * 4] += JM[r * 4]; DP[r * 4 + 1] -= JM[r * 4 + 1]; DP[r * 4 + 2] -= JM[r * 4 + 2]; DP[r * 4 + 3] += JM[r * 4 + 3]; }
+        } else {
+          fj = FJ0 + (jj - 1) * Ni + ii; jacF(cI - Ni, -fsx[fj], -fsy[fj], fj); bp = 16 * (cI - Ni);
+          for (r = 0; r < 4; r++) {
+            var l0 = JM[r * 4], l1 = JM[r * 4 + 1], l2 = JM[r * 4 + 2], l3 = JM[r * 4 + 3];
+            LLo[b + r * 4] = l0; LLo[b + r * 4 + 1] = l1; LLo[b + r * 4 + 2] = l2; LLo[b + r * 4 + 3] = l3;
+            for (k = 0; k < 4; k++) DP[r * 4 + k] -= l0 * LWu[bp + k] + l1 * LWu[bp + 4 + k] + l2 * LWu[bp + 8 + k] + l3 * LWu[bp + 12 + k];
+          }
+        }
+        inv4();
+        for (k = 0; k < 16; k++) LIn[b + k] = INV[k];
+        if (jj < Njb - 1) {
+          fj = FJ0 + jj * Ni + ii; jacF(cI + Ni, fsx[fj], fsy[fj], fj);
+          for (r = 0; r < 4; r++) for (k = 0; k < 4; k++) LWu[b + r * 4 + k] = INV[r * 4] * JM[k] + INV[r * 4 + 1] * JM[4 + k] + INV[r * 4 + 2] * JM[8 + k] + INV[r * 4 + 3] * JM[12 + k];
+        }
+      }
+    }
+    function lineSolve(ii) {
+      var jj, cI, fw, fe, b, g0 = 0, g1 = 0, g2 = 0, g3 = 0, s0 = 0, s1 = 0, s2 = 0, s3 = 0;
+      for (jj = 0; jj < Njb; jj++) {
+        cI = jj * Ni + ii; fw = cI; fe = jj * Ni + ip1[ii]; b = 16 * cI;
+        a_r = R0[cI]; a_1 = R1[cI]; a_2 = R2[cI]; a_3 = R3[cI];
+        offDiag(jj * Ni + im1[ii], -1, fw); offDiag(jj * Ni + ip1[ii], 1, fe);
+        if (jj === Njb - 1) dynOff(cI);
+        if (jj > 0) {
+          a_r -= LLo[b] * g0 + LLo[b + 1] * g1 + LLo[b + 2] * g2 + LLo[b + 3] * g3; a_1 -= LLo[b + 4] * g0 + LLo[b + 5] * g1 + LLo[b + 6] * g2 + LLo[b + 7] * g3;
+          a_2 -= LLo[b + 8] * g0 + LLo[b + 9] * g1 + LLo[b + 10] * g2 + LLo[b + 11] * g3; a_3 -= LLo[b + 12] * g0 + LLo[b + 13] * g1 + LLo[b + 14] * g2 + LLo[b + 15] * g3;
+        }
+        g0 = LIn[b] * a_r + LIn[b + 1] * a_1 + LIn[b + 2] * a_2 + LIn[b + 3] * a_3; g1 = LIn[b + 4] * a_r + LIn[b + 5] * a_1 + LIn[b + 6] * a_2 + LIn[b + 7] * a_3;
+        g2 = LIn[b + 8] * a_r + LIn[b + 9] * a_1 + LIn[b + 10] * a_2 + LIn[b + 11] * a_3; g3 = LIn[b + 12] * a_r + LIn[b + 13] * a_1 + LIn[b + 14] * a_2 + LIn[b + 15] * a_3;
+        GG[4 * jj] = g0; GG[4 * jj + 1] = g1; GG[4 * jj + 2] = g2; GG[4 * jj + 3] = g3;
+      }
+      for (jj = Njb - 1; jj >= 0; jj--) {
+        cI = jj * Ni + ii; b = 16 * cI;
+        if (jj < Njb - 1) {
+          var t0 = GG[4 * jj] - (LWu[b] * s0 + LWu[b + 1] * s1 + LWu[b + 2] * s2 + LWu[b + 3] * s3), t1 = GG[4 * jj + 1] - (LWu[b + 4] * s0 + LWu[b + 5] * s1 + LWu[b + 6] * s2 + LWu[b + 7] * s3);
+          var t2 = GG[4 * jj + 2] - (LWu[b + 8] * s0 + LWu[b + 9] * s1 + LWu[b + 10] * s2 + LWu[b + 11] * s3), t3 = GG[4 * jj + 3] - (LWu[b + 12] * s0 + LWu[b + 13] * s1 + LWu[b + 14] * s2 + LWu[b + 15] * s3);
+          s0 = t0; s1 = t1; s2 = t2; s3 = t3;
+        } else { s0 = GG[4 * jj]; s1 = GG[4 * jj + 1]; s2 = GG[4 * jj + 2]; s3 = GG[4 * jj + 3]; }
+        b = 8 * cI; DQ[b] = s0; DQ[b + 1] = s1; DQ[b + 2] = s2; DQ[b + 3] = s3;
+      }
+    }
+    function sweepPoints(k0, k1, st) {           // Gauss-Seidel over the squares, everything in locals for speed
+      var FIl = FI, DQl = DQ, DIl = DI, csl = cs, cnl = cnb, cgl = csg, cfl2 = cfa, G1 = GM1;
+      for (var cI = k0; cI !== k1; cI += st) {
+        var ar = R0[cI], a1 = R1[cI], a2 = R2[cI], a3 = R3[cI];
+        for (var q = csl[cI], qe = csl[cI + 1]; q < qe; q++) {
+          var nb = cnl[q]; if (nb < 0) continue;
+          var cb = 8 * nb, q0 = DQl[cb], q1 = DQl[cb + 1], q2 = DQl[cb + 2], q3 = DQl[cb + 3];
+          if (q0 === 0 && q1 === 0 && q2 === 0 && q3 === 0) continue;
+          var fb = 16 * cfl2[q], sg = cgl[q], uu = FIl[fb], vv = FIl[fb + 1], nx = FIl[fb + 2], ny = FIl[fb + 3], un = uu * nx + vv * ny, l2 = FIl[fb + 4] + 2 * FIl[fb + 10], s2c = FIl[fb + 8];
+          var dp = G1 * (0.5 * (uu * uu + vv * vv) * q0 - uu * q1 - vv * q2 + q3), du = q1 * nx + q2 * ny - un * q0;
+          var e1 = FIl[fb + 7] * dp + s2c * du, e2 = FIl[fb + 5] * du + s2c * dp, sx = sg * FIl[fb + 12], sy = sg * FIl[fb + 13];
+          var un2 = DQl[cb + 4], vn = DQl[cb + 5], mn = q1 * sx + q2 * sy, uS = un2 * sx + vn * sy, dm = mn - uS * q0;
+          var dpn = G1 * (0.5 * (un2 * un2 + vn * vn) * q0 - un2 * q1 - vn * q2 + q3);
+          ar += 0.5 * (l2 * q0 + e1 - mn);
+          a1 += 0.5 * (l2 * q1 + e1 * uu + e2 * nx - (q1 * uS + un2 * dm + dpn * sx));
+          a2 += 0.5 * (l2 * q2 + e1 * vv + e2 * ny - (q2 * uS + vn * dm + dpn * sy));
+          a3 += 0.5 * (l2 * q3 + e1 * FIl[fb + 9] + e2 * un - ((q3 + dpn) * uS + DQl[cb + 6] * dm));
+        }
+        var b = 16 * cI, o = 8 * cI;
+        DQl[o] = DIl[b] * ar + DIl[b + 1] * a1 + DIl[b + 2] * a2 + DIl[b + 3] * a3; DQl[o + 1] = DIl[b + 4] * ar + DIl[b + 5] * a1 + DIl[b + 6] * a2 + DIl[b + 7] * a3;
+        DQl[o + 2] = DIl[b + 8] * ar + DIl[b + 9] * a1 + DIl[b + 10] * a2 + DIl[b + 11] * a3; DQl[o + 3] = DIl[b + 12] * ar + DIl[b + 13] * a1 + DIl[b + 14] * a2 + DIl[b + 15] * a3;
+      }
+    }
+    var NTS = 0, NTD = 0;
+    function dynNt(cI) {
+      for (var q = cs[cI]; q < cs[cI + 1]; q++) {
+        var f2 = cfa[q], R = fR[f2], an;
+        if (R < 0) { NTD += Math.max(uns[f2], 0); continue; }
+        if (fL[f2] === cI) { an = Math.max(-uns[f2], 0) + dif[f2]; NTS += an * d4[R]; } else { an = Math.max(uns[f2], 0) + dif[f2]; NTS += an * d4[fL[f2]]; }
+        NTD += an;
+      }
+    }
+    function lineSolveNt(ii, ic) {
+      var jj, cI, fw, fe, prev = 0;
+      for (jj = 0; jj < Njb; jj++) {
+        cI = jj * Ni + ii; fw = cI; fe = jj * Ni + ip1[ii];
+        var aW = Math.max(uns[fw], 0) + dif[fw], aE = Math.max(-uns[fe], 0) + dif[fe];
+        var aS = jj === 0 ? dif[FW0 + ii] : Math.max(uns[FJ0 + (jj - 1) * Ni + ii], 0) + dif[FJ0 + (jj - 1) * Ni + ii];
+        var aN = jj < Njb - 1 ? Math.max(-uns[FJ0 + jj * Ni + ii], 0) + dif[FJ0 + jj * Ni + ii] : 0;
+        var rhs = R4[cI] + aW * d4[jj * Ni + im1[ii]] + aE * d4[jj * Ni + ip1[ii]];
+        var dg = aW + aE + aS + aN + srcJ[cI] + Dm[cI] * ic + vol[cI] * a0;
+        if (jj === Njb - 1) { NTS = 0; NTD = 0; dynNt(cI); rhs += NTS; dg += NTD; }
+        if (jj > 0) { dg -= aS * TA[jj - 1]; rhs += aS * prev; }
+        TA[jj] = aN / dg; prev = rhs / dg; TB[jj] = prev;
+      }
+      prev = 0;
+      for (jj = Njb - 1; jj >= 0; jj--) { prev = TB[jj] + TA[jj] * prev; d4[jj * Ni + ii] = prev; }
+    }
+    function pointNt(cI, ic) { NTS = 0; NTD = 0; dynNt(cI); d4[cI] = (R4[cI] + NTS) / (NTD + srcJ[cI] + Dm[cI] * ic + vol[cI] * a0); }
+
+    function implicitUpdate() {
+      var ic = 1 / cfl, ii, s, k, ti0 = now();
+      if (diagAge >= (ctl.unsteady ? 1e9 : ctl.freeze) || S.iters < 80) { diagPass(ic); factorLines(ic); diagAge = 0; }   // frozen through the inner iterations of a time step
+      diagAge++; var td = now(); PF.diag += td - ti0;
+      d4.fill(0, 0, nC);
+      for (k = 0; k < nC; k++) { var ob = 8 * k; DQ[ob] = 0; DQ[ob + 1] = 0; DQ[ob + 2] = 0; DQ[ob + 3] = 0; DQ[ob + 4] = u[k]; DQ[ob + 5] = v[k]; DQ[ob + 6] = (rE[k] + p[k]) / rho[k]; }
+      for (s = 0; s < ctl.sweeps; s++) {
+        var tl0 = now(); for (ii = 0; ii < Ni; ii++) lineSolve(ii); PF.line += now() - tl0;
+        for (var qs2 = 0; qs2 < ctl.qsweeps; qs2++) { sweepPoints(Nb, nC, 1); sweepPoints(nC - 1, Nb - 1, -1); }
+        tl0 = now(); for (ii = Ni - 1; ii >= 0; ii--) lineSolve(ii); PF.line += now() - tl0;
+      }
+      if (turb) for (s = 0; s < ctl.sweeps; s++) {
+        for (ii = 0; ii < Ni; ii++) lineSolveNt(ii, ic);
+        for (k = Nb; k < nC; k++) pointNt(k, ic);
+        for (k = nC - 1; k >= Nb; k--) pointNt(k, ic);
+        for (ii = Ni - 1; ii >= 0; ii--) lineSolveNt(ii, ic);
+      }
+      var nlim = 0, ti1 = now(); PF.impl += ti1 - ti0;
+      for (k = 0; k < nC; k++) {
+        var kb = 8 * k, fac = 1, r = rho[k], dr = DQ[kb];
+        if (dr !== dr) { S.diverged = true; return; }
+        if (dr < -0.4 * r) fac = -0.4 * r / dr; else if (dr > r) fac = r / dr;
+        var pOld = GM1 * (rE[k] - 0.5 * (ru[k] * ru[k] + rv[k] * rv[k]) / r), tries = 0, rn, m1, m2, en, pn;
+        for (; ;) {
+          rn = r + fac * dr; m1 = ru[k] + fac * DQ[kb + 1]; m2 = rv[k] + fac * DQ[kb + 2]; en = rE[k] + fac * DQ[kb + 3];
+          pn = GM1 * (en - 0.5 * (m1 * m1 + m2 * m2) / rn);
+          if (pn > 0.5 * pOld && pn < 2.5 * pOld) break;
+          fac *= 0.5; if (++tries > 6) { fac = 0; rn = r; m1 = ru[k]; m2 = rv[k]; en = rE[k]; break; }
+        }
+        if (fac < 1) nlim++;
+        rho[k] = rn; ru[k] = m1; rv[k] = m2; rE[k] = en;
+        if (turb) { var nn = nt[k] + d4[k]; nt[k] = nn > 1e-3 * ntInf ? nn : (nn > 0.2 * nt[k] ? nn : Math.max(0.2 * nt[k], 1e-3 * ntInf)); }
+      }
+      S.limited = nlim; PF.upd += now() - ti1;
+    }
+
+    /* ---- adaptation: split squares where the sensor is high, merge sibling squares where it is low ---- */
+    var irr = new Uint8Array(CAP);              // squares that were cut (or absorbed a cut sliver): their faces are irregular
+    var flag = new Int8Array(CAP), eta = F64(CAP), lastRef = 0, lastCoa = 0, tauScale = 1;
+    function adapt() {
+      var ta0 = now();
+      var used = (leafCount - baseCount) / (maxQ - baseCount);
+      if (used > 0.9) tauScale = Math.min(60, tauScale * 1.3); else if (used < 0.75) tauScale = Math.max(1, tauScale / 1.15);
+      var r1 = adaptPass(), m1 = lastCoa;
+      if (r1 > 0) { adaptPass(); lastRef += r1; lastCoa += m1; }   // second pass lets coarse squares catch up two levels at once
+      PF.adapt += now() - ta0;
+    }
+    function adaptPass() {
+      primitives(); gradients();
+      maxLevel = LI + Math.max(0, Math.min(5, ctl.levels | 0));
+      var k, q, n, tau = ctl.threshold * tauScale, tc = 0.25 * tau, sens = ctl.sensor, nq0 = nC;
+      var m2n = Math.min(1, mach * mach);       // subsonic flows vary by order M^2, so scale the sensor to match
+      for (k = Nb; k < nC; k++) {
+        var s = csz[k], e1 = s * Math.sqrt(rx[k] * rx[k] + ry[k] * ry[k]) / (rho[k] * m2n), e2 = s * Math.sqrt(px[k] * px[k] + py[k] * py[k]) / (p[k] * m2n), e3 = s * Math.abs(vx[k] - uy[k]) / mach;
+        eta[k] = sens === 'p' ? e2 : sens === 'vort' ? e3 : sens === 'both' ? Math.max(e1, 0.6 * e3) : e1;
+        flag[k] = eta[k] > tau ? 2 : eta[k] > tc ? 1 : 0;      // 2 refine, 1 keep, 0 may merge
+      }
+      for (k = Fs; k < nF; k++) {                // one-cell buffer around flagged squares
+        var L = fL[k], R = fR[k]; if (R < Nb || L < Nb) continue;
+        if (flag[L] === 2 && eta[L] > tau) { if (flag[R] < 2 && nl[cnode[R]] < nl[cnode[L]]) flag[R] = 3; else if (flag[R] === 0) flag[R] = 1; }
+        if (flag[R] === 2 && eta[R] > tau) { if (flag[L] < 2 && nl[cnode[L]] < nl[cnode[R]]) flag[L] = 3; else if (flag[L] === 0) flag[L] = 1; }
+      }
+      /* O-layer columns: split where the streamwise jump across a column is large, merge sibling columns where it is small */
+      var colChanged = false, ceta = null;
+      if (sens !== 'vort' && !(opt && opt.noCols)) {
+        var qq = sens === 'p' ? p : rho, ii, jj, lvMaxC = Math.max(0, Math.min(5, ctl.levels | 0));
+        ceta = new Float64Array(Ni);
+        for (jj = 0; jj < Njb; jj++) for (ii = 0; ii < Ni; ii++) {
+          var cI = jj * Ni + ii, v0 = qq[cI], e = Math.max(Math.abs(v0 - qq[jj * Ni + im1[ii]]), Math.abs(qq[jj * Ni + ip1[ii]] - v0)) / (v0 * m2n);
+          if (e > ceta[ii]) ceta[ii] = e;
+        }
+        var act = new Int8Array(Ni), extra = 0;       // 1 split, -1 merge with the next column
+        var tcol = 3 * tau, tcc = 0.25 * tcol;       // a column costs a whole stack of cells, so it needs a stronger jump than a square
+        var wmin = 1.5 * mesh.h / Math.pow(2, lvMaxC);   // columns already narrower than the finest squares (leading and trailing edge clusters) are left alone
+        function cwid(q) { return Math.hypot(xn[ip1[q]] - xn[q], yn[ip1[q]] - yn[q]); }
+        for (ii = 0; ii < Ni; ii++) if (ceta[ii] > tcol && cols[ii].lev < lvMaxC && cwid(ii) > wmin) act[ii] = 1;
+        for (ii = 0; ii < Ni; ii++) if (act[ii] === 1 && ceta[ii] > tcol) {      // keep neighbouring columns within one level
+          var nb1 = im1[ii], nb2 = ip1[ii];
+          if (cols[nb1].lev < cols[ii].lev && act[nb1] === 0 && cwid(nb1) > wmin) act[nb1] = 2;
+          if (cols[nb2].lev < cols[ii].lev && act[nb2] === 0 && cwid(nb2) > wmin) act[nb2] = 2;
+        }
+        for (ii = 0; ii < Ni - 1; ii++) {
+          var c1 = cols[ii], c2 = cols[ii + 1], ln = lines[ii + 1];
+          if (act[ii] || act[ii + 1] || ln.lev < 1 || c1.lev !== ln.lev || c2.lev !== ln.lev || ceta[ii] > tcc || ceta[ii + 1] > tcc) continue;
+          var o1 = im1[ii], o2 = ip1[ii + 1];
+          if (cols[o1].lev > ln.lev || cols[o2].lev > ln.lev || act[o1] > 0 || act[o2] > 0) continue;
+          act[ii] = -1; act[ii + 1] = -2;
+        }
+        var any = false; for (ii = 0; ii < Ni; ii++) if (act[ii]) { any = true; break; }
+        if (any) {
+          saveCols();
+          var nL = [], nCo = [], count = Ni, ord = [], room;
+          for (ii = 0; ii < Ni; ii++) { if (act[ii] === -1) count--; else if (act[ii] >= 1) ord.push(ii); }
+          ord.sort(function (i1, i2) { return ceta[i2] - ceta[i1]; }); room = NiMax - count;
+          for (q = room > 0 ? room : 0; q < ord.length; q++) act[ord[q]] = 0;
+          count = Ni;
+          for (ii = 0; ii < Ni; ii++) {
+            var A = lines[ii], B = lines[ip1[ii]], co = cols[ii];
+            if (act[ii] === -1) {
+              var cn2 = cols[ii + 1], mq = F64(15 * Njb); for (q = 0; q < mq.length; q++) mq[q] = 0.5 * (co.q[q] + cn2.q[q]);
+              nL.push(A); nCo.push({ lev: co.lev - 1, q: mq }); count--; colChanged = true; ii++; continue;
+            }
+            if (act[ii] >= 1 && count < NiMax) {
+              var M = midLine(A, B, co.lev + 1, A.pk + Math.pow(0.5, co.lev + 1));
+              if (colValid(A, M) && colValid(M, B)) {
+                nL.push(A); nCo.push({ lev: co.lev + 1, q: co.q }); nL.push(M); nCo.push({ lev: co.lev + 1, q: co.q.slice() }); count++; colChanged = true; continue;
+              }
+            }
+            nL.push(A); nCo.push(co);
+          }
+          if (colChanged) { lines = nL; cols = nCo; }
+        }
+      }
+      for (k = 0; k < leafNodes.length; k++) { n = leafNodes[k]; var cS = ncell[n]; for (q = 0; q < 15; q++) nodeQ[15 * n + q] = QA[q][cS]; }
+      var nodes = cnode.slice(Nb, nC), fl = flag.slice(Nb, nC), nref = 0, ncoa = 0, seen = new Set();
+      var et = eta.slice(Nb, nC), order = [];
+      for (k = 0; k < nodes.length; k++) {      // merge first, to free cells for the refinement that follows
+        if (fl[k] !== 0) continue;
+        n = nodes[k]; if (nch[4 * n] >= 0) continue;
+        var pn = npar[n]; if (pn < 0 || seen.has(pn)) continue; seen.add(pn);
+        var ok = true;
+        for (q = 0; q < 4; q++) { var ch = nch[4 * pn + q]; if (ch < 0 || nch[4 * ch] >= 0 || ncell[ch] < Nb || ncell[ch] >= nq0 || cnode[ncell[ch]] !== ch || flag[ncell[ch]] !== 0) { ok = false; break; } }
+        if (ok && coarsenOK(pn)) { coarsen(pn); ncoa++; }
+      }
+      for (k = 0; k < nodes.length; k++) if (fl[k] >= 2) order.push(k);
+      order.sort(function (i1, i2) { return et[i2] - et[i1]; });   // strongest features first, in case the cell limit is reached
+      linProl = true;
+      for (q = 0; q < order.length; q++) { n = nodes[order[q]]; if (map.get(key(nl[n], nix[n], niy[n])) === n && nch[4 * n] < 0 && refine(n)) nref++; }
+      linProl = false;
+      lastRef = nref; lastCoa = ncoa;
+      if (colChanged) setBlock();
+      if (nref || ncoa || colChanged) rebuild();
+      return nref + (colChanged ? 1 : 0);
+    }
+
+    function setTimeCoeffs() {
+      if (!ctl.unsteady) { a0 = a1 = a2 = 0; return; }
+      var dt = ctl.dt / mach;
+      if (bdf2 && lastDt === ctl.dt) { a0 = 1.5 / dt; a1 = 2 / dt; a2 = 0.5 / dt; } else { a0 = 1 / dt; a1 = 1 / dt; a2 = 0; }
+    }
+    var PF = { grad: 0, flux: 0, src: 0, impl: 0, upd: 0, adapt: 0, diag: 0, line: 0, n: 0 }, now = (typeof performance !== 'undefined') ? function () { return performance.now(); } : Date.now;
+    function iterate() {
+      if (S.diverged) return false;
+      var k;
+      if (ctl.unsteady && S.inner === 0) {
+        for (k = 0; k < 5; k++) { Qm[k].set(Qn[k]); Qn[k].set(QA[k]); }
+        setTimeCoeffs(); diagAge = 1e10;
+        if (ctl.predict && bdf2 && lastDt === ctl.dt) {      // start the step from a second-order extrapolation in time
+          var q0 = Qn[0], q1 = Qn[1], q2 = Qn[2], q3 = Qn[3], q4 = Qn[4], m0 = Qm[0], m1 = Qm[1], m2 = Qm[2], m3 = Qm[3], m4 = Qm[4];
+          for (k = 0; k < nC; k++) {
+            var r = 2 * q0[k] - m0[k], a = 2 * q1[k] - m1[k], b = 2 * q2[k] - m2[k], e = 2 * q3[k] - m3[k];
+            var pn = GM1 * (e - 0.5 * (a * a + b * b) / r), po = GM1 * (q3[k] - 0.5 * (q1[k] * q1[k] + q2[k] * q2[k]) / q0[k]);
+            if (r > 0.7 * q0[k] && r < 1.4 * q0[k] && pn > 0.7 * po && pn < 1.4 * po) { rho[k] = r; ru[k] = a; rv[k] = b; rE[k] = e; if (turb) { var nn = 2 * q4[k] - m4[k]; if (nn > 0.5 * q4[k]) nt[k] = nn; } }
+          }
+        }
+      } else if (!ctl.unsteady) { a0 = a1 = a2 = 0; bdf2 = false; }
+      cfl = Math.min(ctl.cflMax, 1.5 * Math.pow(1.12, S.iters));
+      residual();
+      if (!(S.res === S.res) || !isFinite(S.res)) { S.diverged = true; return false; }
+      if (S.inner === 0) S.res0 = S.res > 0 ? S.res : 1;
+      S.resRel = S.res / S.res0;
+      implicitUpdate();
+      S.iters++;
+      if (!ctl.unsteady) { S.step++; if (ctl.adapt && S.step % (10 * ctl.adaptEvery) === 0) adapt(); return true; }
+      S.inner++;
+      if (S.inner >= ctl.maxInner || (S.inner >= 3 && S.resRel < ctl.innerTol)) {
+        S.lastInner = S.inner; S.inner = 0; S.time += ctl.dt; S.step++; bdf2 = true; lastDt = ctl.dt;
+        if (ctl.adapt && S.step % ctl.adaptEvery === 0) adapt();
+        return true;
+      }
+      return false;
+    }
+
+    /* ---- output for drawing ---- */
+    function nodeBase(out, nV) {                // u, v, p, rho, vorticity/M, mut/mu at the O-layer nodes
+      var W = Ni + 1, ii, jj, q;
+      for (jj = 0; jj <= Njb; jj++) for (ii = 0; ii < Ni; ii++) {
+        var im = im1[ii], k = jj * W + ii, su = 0, sv = 0, sp = 0, sr = 0, sw = 0, sm = 0, sn = 0, cnt = 0;
+        for (q = 0; q < 4; q++) {
+          var jc = jj - 1 + (q >> 1); if (jc < 0 || jc >= Njb) continue;
+          var cI = jc * Ni + ((q & 1) ? ii : im);
+          su += u[cI]; sv += v[cI]; sp += p[cI]; sr += rho[cI]; sw += vx[cI] - uy[cI]; sm += mut[cI]; sn += mu[cI]; cnt++;
+        }
+        if (jj === 0) { su = 0; sv = 0; sm = 0; }
+        out[k] = su / cnt; out[nV + k] = sv / cnt; out[2 * nV + k] = sp / cnt; out[3 * nV + k] = sr / cnt; out[4 * nV + k] = sw / cnt / mach; out[5 * nV + k] = Math.max(0, sm / sn);
+        if (ii === 0) for (q = 0; q < 6; q++) out[q * nV + k + Ni] = out[q * nV + k];
+      }
+    }
+    function quadFrame() {                      // per square: x0, y0, size, then the same six values (cut squares are drawn whole, under the O-layers)
+      var nq = leafNodes.length, o = new Float32Array(9 * nq);
+      for (var k = 0; k < nq; k++) {
+        var n = leafNodes[k], cI = ncell[n], s = Rs / Math.pow(2, nl[n]), b = 9 * k;
+        o[b] = ox + nix[n] * s; o[b + 1] = oy + niy[n] * s; o[b + 2] = s; o[b + 3] = u[cI]; o[b + 4] = v[cI]; o[b + 5] = p[cI]; o[b + 6] = rho[cI];
+        o[b + 7] = (vx[cI] - uy[cI]) / mach; o[b + 8] = Math.max(0, mut[cI] / mu[cI]);
+      }
+      return o;
+    }
+
+    rebuild(); init();
+    return {
+      kind: 'hybrid', Nj: Njb, mesh: mesh, state: S, ctl: ctl, iterate: iterate, init: init, setFreestream: setFreestream, adapt: adapt,
+      refresh: function () { primitives(); gradients(); },
+      fs: function () { return { mach: mach, alpha: alpha, Re: Re, turbulent: turb, qInf: qInf, pInf: pInf, muInf: muInf }; },
+      nodeBase: nodeBase, quadFrame: quadFrame, prof: PF, cells: function () { return nC; },
+      info: function () { var wz = wakeLen > 0 ? wakeSize : 0; var lc = [0, 0, 0, 0, 0, 0]; for (var q = 0; q < cols.length; q++) lc[cols[q].lev]++; return { wakeSize: wz, colLevels: lc, merged2: nSmall, squares: leafNodes.length, layerCells: Nb, columns: Ni, bgen: blockGen, gen: meshGen, minSize: Rs / Math.pow(2, lvMax), maxSize: Rs / Math.pow(2, lvMin), finest: lvMax - LI, refined: lastRef, merged: lastCoa, maxQ: maxQ, tauScale: tauScale }; },
+      wall: wall
+    };
+  }
+
+  return { buildHybrid: function (g, m) { return retry(buildHybrid, g, m); }, HybridSolver: HybridSolver, buildMesh: function (g, m) { return retry(buildMesh, g, m); }, Solver: Solver, firstCellHeight: firstCellHeight, layerThickness: layerThickness, bodyPolyline: bodyPolyline, GAM: GAM };
+})();
+
+
+</script>
+<script>
+(function(){
+'use strict';
+var $=function(id){return document.getElementById(id);};
+var RGAS=287.05, GAM=1.4;
+var solver=null, mesh=null, running=false, dim=null, geoKey='';
+var H={step:[],t:[],cl:[],cd:[],cm:[],res:[],stride:1,count:0};
+var frBytes=0, curQ=null, qv=null, geoGen=-1, geoArr=null;
+var HALF=window.Float16Array||Float32Array;        // recorded frames are stored at half precision where the browser supports it
+/* squares for drawing: g = x0, y0, size per square (shared by every frame on the same mesh); v = six values per square */
+function liveQ(){ var o=solver.quadFrame(), n=o.length/9, gen=solver.info().gen, v=new Float32Array(6*n), k, j;
+  if(gen!==geoGen||!geoArr||geoArr.length!==3*n){ geoArr=new Float32Array(3*n); for(k=0;k<n;k++){ geoArr[3*k]=o[9*k]; geoArr[3*k+1]=o[9*k+1]; geoArr[3*k+2]=o[9*k+2]; } geoGen=gen; }
+  for(k=0;k<n;k++) for(j=0;j<6;j++) v[6*k+j]=o[9*k+3+j];
+  return {g:geoArr,v:v,n:n}; }
+var FR=[], capEvery=1, capCount=0, RP={on:false,playing:false,t:0,last:0,key:''};
+var view={cx:0.9,cy:0,half:2.1}, dirty=true, lastDraw=0, lastUI=0, showMesh=false;
+
+var PRESETS={
+  cylT:{mesh:'o',gtype:'cylinder',pinf:101325,mach:0.2,tinf:288.15,alpha:0,chord:0.1,reov:false,model:'sa',mode:'u',dt:0.03},
+  naca:{mesh:'o',gtype:'naca',naca:'0012',pinf:101325,mach:0.3,tinf:288.15,alpha:6,chord:1,reov:false,model:'sa',mode:'s',dt:0.05},
+  stall:{mesh:'o',gtype:'naca',naca:'4412',pinf:101325,mach:0.2,tinf:288.15,alpha:20,chord:0.5,reov:false,model:'sa',mode:'u',dt:0.03},
+  trans:{mesh:'amr',sensor:'rho',gtype:'naca',naca:'0012',pinf:60000,mach:0.8,tinf:255,alpha:1.25,chord:1,reov:false,model:'sa',mode:'s',dt:0.05},
+  cylL:{mesh:'amr',sensor:'vort',gtype:'cylinder',pinf:101325,mach:0.2,tinf:288.15,alpha:0,chord:0.1,reov:true,reval:150,model:'lam',mode:'u',dt:0.05},
+  sup:{mesh:'amr',sensor:'rho',gtype:'cylinder',pinf:20000,mach:2,tinf:220,alpha:0,chord:0.1,reov:false,model:'sa',mode:'s',dt:0.02}
+};
+function applyPreset(k){
+  var p=PRESETS[k]; if(!p) return;
+  ['gtype','pinf','mach','tinf','alpha','chord','model','mode','dt'].forEach(function(id){$(id).value=p[id];});
+  if(p.naca) $('naca').value=p.naca;
+  $('mtype').value=p.mesh||'o'; if(p.sensor){ $('sensor').value=p.sensor; $('thr').value=p.sensor==='vort'?0.05:0.03; }
+  $('reov').checked=!!p.reov; if(p.reval) $('reval').value=p.reval;
+  syncVis();
+}
+function syncVis(){
+  var g=$('gtype').value;
+  $('w_naca').hidden=g!=='naca'; $('w_ell').hidden=g!=='ellipse'; $('w_cus').hidden=g!=='custom';
+  $('rewrap').hidden=!$('reov').checked;
+  var am=$('mtype').value==='amr'; $('amrbox').hidden=!am; $('amrnote').hidden=!am;
+  showDerived();
+}
+function num(id){return parseFloat($(id).value);}
+function fmt(x,n){ if(!isFinite(x)) return '–'; var a=Math.abs(x); if(a!==0&&(a<1e-3||a>=1e5)) return x.toExponential(2); return x.toFixed(n===undefined?4:n); }
+function eng(x){ if(!isFinite(x)) return '–'; var a=Math.abs(x); if(a>=1e6) return (x/1e6).toPrecision(3)+'e6'; if(a>=1e4) return (x/1e3).toPrecision(3)+'e3'; return x.toPrecision(3); }
+
+function readFlow(){
+  var p=num('pinf'), M=num('mach'), T=num('tinf'), al=num('alpha'), c=num('chord');
+  if(!(p>0)) throw new Error('Static pressure must be positive.');
+  if(!(M>=0.03&&M<=4)) throw new Error('Mach number must lie between 0.03 and 4.');
+  if(!(T>=50&&T<=2000)) throw new Error('Static temperature must lie between 50 K and 2000 K.');
+  if(!(Math.abs(al)<=90)) throw new Error('Angle of attack must lie between −90° and 90°.');
+  if(!(c>0)) throw new Error('Reference length must be positive.');
+  var a=Math.sqrt(GAM*RGAS*T), U=M*a, rho=p/(RGAS*T);
+  var mu=1.716e-5*Math.pow(T/273.15,1.5)*(273.15+110.4)/(T+110.4), Re=rho*U*c/mu, ov=$('reov').checked;
+  if(ov){ Re=num('reval'); if(!(Re>=10)) throw new Error('Reynolds number must be at least 10.'); }
+  if(!(Re>=10&&Re<=5e8)) throw new Error('Reynolds number '+eng(Re)+' is outside the supported range of 10 to 5e8. Change the reference length or set it directly.');
+  return {p:p,M:M,T:T,alpha:al,chord:c,a:a,U:U,rho:rho,mu:mu,Re:Re,q:0.5*GAM*p*M*M,turb:$('model').value==='sa',reov:ov};
+}
+function showDerived(){
+  try{ var f=readFlow();
+    $('derived').textContent='U∞ '+eng(f.U)+' m/s · ρ∞ '+eng(f.rho)+' kg/m³ · q∞ '+eng(f.q)+' Pa · Re '+eng(f.Re)+(f.reov?' (set directly)':'');
+  }catch(e){ $('derived').textContent=e.message; }
+}
+function applyCtl(){
+  if(!solver) return;
+  var c=solver.ctl, dt=num('dt'), inn=Math.round(num('inner')), tol=num('tol'), cfl=num('cfl');
+  c.unsteady=$('mode').value==='u';
+  if(dt>0) c.dt=Math.min(dt,5); if(inn>=1) c.maxInner=Math.min(inn,200); if(tol>0&&tol<1) c.innerTol=tol; if(cfl>=1) c.cflMax=cfl;
+  if(solver.kind==='hybrid'){ var th=num('thr'), lv=Math.round(num('lev')), ae=Math.round(num('aevery')); c.sensor=$('sensor').value; if(th>0) c.threshold=th; if(lv>=0) c.levels=Math.min(lv,4); if(ae>=1) c.adaptEvery=ae; }
+  $('ttl').textContent=c.unsteady?'Time tU∞/c':'Iterations';
+}
+function solverFs(f){ return {mach:f.M,alpha:f.alpha*Math.PI/180,Re:f.Re,Tinf:f.T,turbulent:f.turb}; }
+function geoFromForm(){ return {type:$('gtype').value,naca:$('naca').value,thickness:num('ethick'),coords:$('coords').value}; }
+
+function build(){
+  $('err').textContent='';
+  try{
+    var f=readFlow(), r=$('res').value.split('x'), Ni=+r[0], Nj=+r[1], rad=num('rad'), yp=num('yp');
+    if(!(rad>=8&&rad<=200)) throw new Error('Far-field distance must lie between 8 and 200 chords.');
+    if(!(yp>=0.2&&yp<=100)) throw new Error('Target y⁺ must lie between 0.2 and 100.');
+    var h0=CFD.firstCellHeight(f.Re,f.turb,yp);
+    if($('mtype').value==='amr'){
+      var mq=Math.round(num('maxq')), mg=num('margin'), wk=num('wake');
+      if(!(wk>=0&&wk<=40)) throw new Error('Wake zone length must lie between 0 and 40 chords.');
+      if(!(mq>=6000&&mq<=40000)) throw new Error('Square limit must lie between 6000 and 40000.');
+      if(!(mg===0||(mg>=0.01&&mg<=0.3))) throw new Error('O-layer thickness must be 0, to size it from the boundary layer, or lie between 0.01 and 0.3 chords.');
+      mesh=CFD.buildHybrid(geoFromForm(),{Ni:Ni,h0:h0,radius:rad,thick:mg>0?mg:CFD.layerThickness(f.Re,f.turb)});
+      solver=CFD.HybridSolver(mesh,solverFs(f),{maxQuads:mq,wakeLen:wk});
+    } else { mesh=CFD.buildMesh(geoFromForm(),{Ni:Ni,Nj:Nj,h0:h0,radius:rad}); solver=CFD.Solver(mesh,solverFs(f)); }
+    dim=f; applyCtl();
+    H={step:[],t:[],cl:[],cd:[],cm:[],res:[],stride:1,count:0};
+    FR=[]; frBytes=0; capEvery=1; capCount=0; curQ=null; geoGen=-1; geoArr=null; setReplay(false);
+    $('meshinfo').textContent=(solver.kind==='hybrid'?(Ni*mesh.Nj)+' cells in '+mesh.Nj+' O-layers '+mesh.thick.toFixed(3)+' c thick, squares start at '+mesh.h.toFixed(4)+' c':(Ni*Nj)+' cells')+' · first cell '+(h0*f.chord).toExponential(2)+' m · growth '+mesh.growth.toFixed(3);
+    $('tyh').textContent='first cell '+h0.toExponential(1)+' c';
+    if(solver.kind==='hybrid'){ var wz=solver.info().wakeSize; $('meshinfo').textContent+=wz>0?' · wake zone squares '+wz.toFixed(3)+' c':' · wake zone off'+(num('wake')>0?' (no room under the square limit)':''); }
+    $('csvbox').style.display='none';
+    glMesh(); solver.refresh(); dirty=true; lastUI=0;
+    return true;
+  }catch(e){ $('err').textContent=e.message; return false; }
+}
+function keepFlow(){
+  $('err').textContent='';
+  if(!solver) return;
+  try{ var f=readFlow(); solver.setFreestream(solverFs(f)); dim=f; applyCtl(); dirty=true; }
+  catch(e){ $('err').textContent=e.message; }
+}
+function setRunning(on){ running=on&&!!solver&&!solver.state.diverged; $('run').textContent=running?'Pause':'Run'; lastUI=0; }
+
+function record(){
+  var S=solver.state; H.count++;
+  if(solver.ctl.unsteady&&glOK&&(capCount++%capEvery===0)) capture();
+  if(H.count%H.stride!==0) return;
+  H.step.push(S.step); H.t.push(solver.ctl.unsteady?S.time:S.step); H.cl.push(S.cl); H.cd.push(S.cd); H.cm.push(S.cm); H.res.push(S.res);
+  if(H.step.length>6000){ ['step','t','cl','cd','cm','res'].forEach(function(k){ H[k]=H[k].filter(function(_,i){return i%2===1;}); }); H.stride*=2; }
+}
+function strouhal(){
+  if(!solver||!solver.ctl.unsteady) return NaN;
+  var n=H.t.length; if(n<60) return NaN;
+  var s=n>>1, m=0, i, lo=Infinity, hi=-Infinity;
+  for(i=s;i<n;i++){ m+=H.cl[i]; if(H.cl[i]<lo)lo=H.cl[i]; if(H.cl[i]>hi)hi=H.cl[i]; } m/=(n-s);
+  if(hi-lo<0.01) return NaN;
+  var z=[];
+  for(i=s;i<n-1;i++){ var a=H.cl[i]-m,b=H.cl[i+1]-m; if(a<0&&b>=0) z.push(H.t[i]-a*(H.t[i+1]-H.t[i])/(b-a)); }
+  if(z.length<3) return NaN;
+  return (z.length-1)/(z[z.length-1]-z[0]);
+}
+
+/* ---------- WebGL field view ---------- */
+var cv=$('gl'), gl=null, prog, buf={}, nodeVal=null, nVert=0, nTri=0, nLine=0, rng=[0,1], cmapTex={}, glOK=false;
+var SEQ=['#0a1838','#123f78','#17769a','#2fa79a','#8fcf7f','#f3ec9a'], DIV=['#1f4fa8','#7ea1d6','#d9dde2','#e09a86','#b5301f'];
+function hex(h){ return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)]; }
+function ramp(stops){ var d=new Uint8Array(1024),n=stops.length-1; for(var i=0;i<256;i++){ var x=i/255*n,k=Math.min(n-1,Math.floor(x)),f=x-k,a=hex(stops[k]),b=hex(stops[k+1]); for(var c=0;c<3;c++) d[4*i+c]=Math.round(a[c]+f*(b[c]-a[c])); d[4*i+3]=255; } return d; }
+function glInit(){
+  gl=cv.getContext('webgl',{antialias:true,alpha:false}); if(!gl){ $('status').textContent='WebGL is unavailable, so the flow field cannot be drawn. Forces and charts still update.'; return; }
+  function sh(t,s){ var o=gl.createShader(t); gl.shaderSource(o,s); gl.compileShader(o); return o; }
+  prog=gl.createProgram();
+  gl.attachShader(prog,sh(gl.VERTEX_SHADER,'attribute vec2 a;attribute float s;uniform vec4 T;varying float v;void main(){v=s;gl_Position=vec4(a*T.xy+T.zw,0.,1.);}'));
+  gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,'precision mediump float;varying float v;uniform sampler2D C;uniform vec2 R;uniform vec4 K;uniform float A;void main(){if(K.a>0.){gl_FragColor=K;}else{gl_FragColor=vec4(texture2D(C,vec2(clamp((v-R.x)/(R.y-R.x),0.002,0.998),.5)).rgb,A);}}'));
+  gl.linkProgram(prog); gl.useProgram(prog);
+  ['seq','div'].forEach(function(k){ var t=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,t);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,256,1,0,gl.RGBA,gl.UNSIGNED_BYTE,ramp(k==='seq'?SEQ:DIV));
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE); cmapTex[k]=t; });
+  buf.pos=gl.createBuffer(); buf.val=gl.createBuffer(); buf.tri=gl.createBuffer(); buf.lin=gl.createBuffer(); buf.wall=gl.createBuffer(); buf.qpos=gl.createBuffer(); buf.qval=gl.createBuffer(); buf.qlin=gl.createBuffer();
+  gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA); glOK=true;
+}
+var liveBlk=null, upBlk=null, blkGen=-1;
+function makeBlk(){                            // drawable copy of the near-body structured mesh as it is now
+  var Ni=mesh.Ni,Nj=mesh.Nj,W=Ni+1,i,j,k=0,nV=W*(Nj+1), pos=new Float32Array(2*nV);
+  for(j=0;j<=Nj;j++) for(i=0;i<=Ni;i++){ var n=j*Ni+(i%Ni); pos[k++]=mesh.x[n]; pos[k++]=mesh.y[n]; }
+  var tri=new Uint16Array(6*Ni*Nj), lin=new Uint16Array(4*Ni*Nj+2*Ni); k=0; var q=0;
+  for(j=0;j<Nj;j++) for(i=0;i<Ni;i++){ var a=j*W+i,b=a+1,c=a+W,d=c+1; tri[k++]=a;tri[k++]=b;tri[k++]=d;tri[k++]=a;tri[k++]=d;tri[k++]=c; lin[q++]=a;lin[q++]=c; lin[q++]=c;lin[q++]=d; }
+  var nl=q; for(i=0;i<Ni;i++){ lin[q++]=i; lin[q++]=i+1; }
+  return {Ni:Ni,Nj:Nj,W:W,nVert:nV,pos:pos,tri:tri,lin:lin,nTri:k,nLine:nl};
+}
+function useBlk(b){
+  if(upBlk===b) return;
+  upBlk=b; nVert=b.nVert; nTri=b.nTri; nLine=b.nLine;
+  if(!nodeVal||nodeVal.length!==nVert) nodeVal=new Float32Array(nVert);
+  if(!base||base.length!==6*nVert) base=new Float32Array(6*nVert);
+  if(!glOK) return;
+  gl.bindBuffer(gl.ARRAY_BUFFER,buf.pos); gl.bufferData(gl.ARRAY_BUFFER,b.pos,gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,buf.tri); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,b.tri,gl.STATIC_DRAW);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,buf.lin); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,b.lin,gl.STATIC_DRAW);
+}
+function syncLive(){ if(solver.kind==='hybrid'){ var g=solver.info().bgen; if(g!==blkGen){ blkGen=g; liveBlk=makeBlk(); } } }
+function glMesh(){ liveBlk=makeBlk(); blkGen=solver.kind==='hybrid'?solver.info().bgen:0; upBlk=null; useBlk(liveBlk); }
+var base=null;
+/* node values of u, v, p, rho, vorticity/M and mut/mu, the set every display field is built from */
+function liveBase(out,b){
+  if(solver.kind==='hybrid'){ solver.nodeBase(out,b.nVert); return; }
+  var F=solver.fields, Ni=b.Ni, Nj=b.Nj, W=Ni+1, n=b.nVert, M=solver.fs().mach, i, j;
+  for(j=0;j<=Nj;j++) for(i=0;i<Ni;i++){
+    var im=(i+Ni-1)%Ni, r1=(j+1)*Ni, r2=(j+2)*Ni, a=r1+im,b=r1+i,c=r2+im,d=r2+i, k=j*W+i;
+    out[k]=0.25*(F.u[a]+F.u[b]+F.u[c]+F.u[d]); out[n+k]=0.25*(F.v[a]+F.v[b]+F.v[c]+F.v[d]);
+    out[2*n+k]=0.25*(F.p[a]+F.p[b]+F.p[c]+F.p[d]); out[3*n+k]=0.25*(F.rho[a]+F.rho[b]+F.rho[c]+F.rho[d]);
+    out[4*n+k]=0.25*((F.vx[a]-F.uy[a])+(F.vx[b]-F.uy[b])+(F.vx[c]-F.uy[c])+(F.vx[d]-F.uy[d]))/M;
+    out[5*n+k]=Math.max(0,(F.mut[a]+F.mut[b]+F.mut[c]+F.mut[d])/(F.mu[a]+F.mu[b]+F.mu[c]+F.mu[d]));
+    if(i===0) for(var q=0;q<6;q++) out[q*n+k+Ni]=out[q*n+k];
+  }
+}
+function capture(){
+  solver.refresh();
+  syncLive(); var d32=new Float32Array(6*liveBlk.nVert); liveBase(d32,liveBlk); var d=toHalf(d32);
+  var hy=solver.kind==='hybrid', lq=hy?liveQ():null, fr={t:solver.state.time,d:d,blk:liveBlk,q:lq?{g:lq.g,v:toHalf(lq.v),n:lq.n}:null,gen:hy?solver.info().gen:0};
+  FR.push(fr); frBytes+=frameBytes(fr);
+  var budget=(window.innerWidth<700?60:140)*1048576;
+  if(frBytes>budget){ FR=FR.filter(function(_,i){return i%2===0;}); capEvery*=2; capCount=1; frBytes=0; FR.forEach(function(g){ frBytes+=frameBytes(g); }); }
+}
+function toHalf(a){ if(HALF===Float32Array) return a; var o=new HALF(a.length); for(var i=0;i<a.length;i++){ var x=a[i]; o[i]=x>6e4?6e4:x<-6e4?-6e4:x; } return o; }
+function frameBytes(fr){ return fr.d.byteLength+(fr.q?fr.q.v.byteLength+fr.q.g.byteLength/4:0); }
+var LAY=[];                                   // what to draw: one layer, or two cross-faded when the mesh differs between frames
+function replayBase(){
+  var n=FR.length, lo=0, hi=n-1, t=Math.min(Math.max(RP.t,FR[0].t),FR[n-1].t), i;
+  while(hi-lo>1){ var m=(lo+hi)>>1; if(FR[m].t<=t) lo=m; else hi=m; }
+  var A=FR[lo], B=FR[hi], f=hi>lo?(t-A.t)/(B.t-A.t):0, g=1-f;
+  if(f<0.002||A===B){ LAY=[{blk:A.blk,d:A.d,q:A.q,a:1}]; return; }
+  if(A.blk===B.blk&&A.gen===B.gen&&(!A.q||(B.q&&A.q.g===B.q.g))){   // same mesh: blend the values themselves
+    useBlk(A.blk);
+    for(i=0;i<base.length;i++) base[i]=g*A.d[i]+f*B.d[i];
+    var cq=null; if(A.q){ var cv2=new Float32Array(A.q.v.length), av=A.q.v, bv=B.q.v; for(i=0;i<cv2.length;i++) cv2[i]=g*av[i]+f*bv[i]; cq={g:A.q.g,v:cv2,n:A.q.n}; }
+    LAY=[{blk:A.blk,d:base,q:cq,a:1}]; return;
+  }
+  LAY=[{blk:A.blk,d:A.d,q:A.q,a:1},{blk:B.blk,d:B.d,q:B.q,a:f}];   // the mesh adapted between these frames: dissolve one into the other
+}
+function fval(kind,fs,u,v,p,r,w,m){
+  if(kind==='mach') return Math.sqrt((u*u+v*v)/(GAM*p/r));
+  if(kind==='vel') return Math.sqrt(u*u+v*v)/fs.mach;
+  if(kind==='cp') return (p-fs.pInf)/fs.qInf;
+  if(kind==='rho') return r;
+  if(kind==='tem') return GAM*p/r;
+  if(kind==='vort') return w;
+  return m;
+}
+function quadVals(Q){
+  if(!Q){ qv=null; return; }
+  var n=Q.n, V=Q.v, fs=solver.fs(), kind=$('field').value; qv=new Float32Array(n);
+  for(var k=0;k<n;k++){ var b=6*k; qv[k]=fval(kind,fs,V[b],V[b+1],V[b+2],V[b+3],V[b+4],V[b+5]); }
+}
+function fillVals(B){
+  var fs=solver.fs(), kind=$('field').value, M=fs.mach, n=nVert, i, val;
+  for(i=0;i<n;i++){
+    var u=B[i], v=B[n+i], p=B[2*n+i], r=B[3*n+i];
+    if(kind==='mach') val=Math.sqrt((u*u+v*v)/(GAM*p/r));
+    else if(kind==='vel') val=Math.sqrt(u*u+v*v)/M;
+    else if(kind==='cp') val=(p-fs.pInf)/fs.qInf;
+    else if(kind==='rho') val=r;
+    else if(kind==='tem') val=GAM*p/r;
+    else if(kind==='vort') val=B[4*n+i];
+    else val=B[5*n+i];
+    nodeVal[i]=val;
+  }
+}
+function nodeField(){
+  var kind=$('field').value;
+  var rp=RP.on&&FR.length>1;
+  if(rp){
+    // hold the colour range steady during replay: take it from the latest frame, refresh when field or view changes
+    var key=kind+'|'+view.cx.toFixed(4)+'|'+view.cy.toFixed(4)+'|'+view.half.toFixed(4)+'|'+cv.width+'|'+FR.length;
+    if(key!==RP.key){ RP.key=key; useBlk(FR[FR.length-1].blk); fillVals(FR[FR.length-1].d); curQ=FR[FR.length-1].q; quadVals(curQ); calcRange(kind); }
+    replayBase();
+  } else { syncLive(); useBlk(liveBlk); liveBase(base,liveBlk); curQ=solver.kind==='hybrid'?liveQ():null; fillVals(base); quadVals(curQ); calcRange(kind); LAY=[{blk:liveBlk,d:base,q:curQ,a:1}]; }
+  $('cmin').textContent=fmt(rng[0],3); $('cmax').textContent=fmt(rng[1],3);
+  $('cbar').style.background='linear-gradient(90deg,'+(kind==='vort'?DIV:SEQ).join(',')+')';
+}
+function calcRange(kind){
+  var Ni=upBlk.Ni, Nj=upBlk.Nj, W=Ni+1, P=upBlk.pos, i, j;
+  // colour range from the nodes in view
+  var asp=cv.height/Math.max(cv.width,1), x0=view.cx-view.half, x1=view.cx+view.half, y0=view.cy-view.half*asp, y1=view.cy+view.half*asp, s=[];
+  for(j=0;j<=Nj;j++) for(i=0;i<Ni;i+=2){ var n=2*(j*W+i), x=P[n], y=P[n+1]; if(x>x0&&x<x1&&y>y0&&y<y1&&(kind!=='vort'||Math.hypot(x-P[2*i],y-P[2*i+1])>0.05)) s.push(nodeVal[j*W+i]); }
+  if(curQ&&qv){ var G=curQ.g; for(i=0;i<qv.length;i++){ var qx=G[3*i]+0.5*G[3*i+2], qy=G[3*i+1]+0.5*G[3*i+2]; if(qx>x0&&qx<x1&&qy>y0&&qy<y1) s.push(qv[i]); } }
+  if(s.length<40){ s=Array.prototype.slice.call(nodeVal); }
+  s.sort(function(p1,p2){return p1-p2;});
+  var lo=s[Math.floor(0.005*(s.length-1))], hi=s[Math.ceil(0.995*(s.length-1))];
+  if(kind==='vort'){ var m=Math.max(Math.abs(s[Math.floor(0.01*(s.length-1))]),Math.abs(s[Math.ceil(0.99*(s.length-1))]),0.5); lo=-m; hi=m; }
+  if(kind==='mut'){ lo=0; hi=Math.max(s[s.length-1],1e-6); }
+  if(!(hi-lo>1e-9)){ hi=lo+1e-9+1e-6*Math.abs(lo); }
+  rng=[lo,hi];
+}
+function setReplay(on){
+  RP.on=!!on&&FR.length>1; RP.playing=RP.on; RP.key='';
+  if(RP.on) RP.t=replayStart();
+  $('rmode').setAttribute('aria-pressed',String(RP.on)); $('rmode').textContent=RP.on?'Back to live':'Replay';
+  $('rplay').disabled=!RP.on; $('rpos').disabled=!RP.on; $('rplay').textContent=RP.playing?'Pause replay':'Play';
+  charts.cl.mark=charts.cd.mark=null; dirty=true; lastUI=0;
+}
+function replayStart(){ var t1=FR[FR.length-1].t, t0=FR[0].t; return t1-(t1-t0)*parseFloat($('rrange').value); }
+function clAt(t){ var n=H.t.length, lo=0, hi=n-1; if(n<1) return NaN; while(hi-lo>1){ var m=(lo+hi)>>1; if(H.t[m]<=t) lo=m; else hi=m; } return H.cl[Math.abs(H.t[hi]-t)<Math.abs(H.t[lo]-t)?hi:lo]; }
+function replayTick(now){
+  var n=FR.length, info=$('rinfo');
+  if(n<2){ info.textContent=solver&&!solver.ctl.unsteady?'Replay records unsteady runs only. Switch time integration to unsteady.':'Frames are recorded while an unsteady run advances.'; return; }
+  var t0=FR[0].t, t1=FR[n-1].t, mb=frBytes/1048576;
+  if(!RP.on){ info.textContent=n+' frames recorded · t '+t0.toFixed(1)+' to '+t1.toFixed(1)+' · '+mb.toFixed(0)+' MB'; return; }
+  if(RP.playing){ RP.t+=Math.min(0.1,(now-RP.last)/1000)*parseFloat($('rspeed').value); if(RP.t>t1||RP.t<t0){ if(RP.vidEnd){ RP.t=t1; var ve=RP.vidEnd; RP.vidEnd=null; ve(); } else RP.t=replayStart(); } $('rpos').value=Math.round(1000*(RP.t-t0)/(t1-t0)); dirty=true; }
+  charts.cl.mark=charts.cd.mark=RP.t; if(RP.playing){ charts.cl.draw(); charts.cd.draw(); }
+  info.textContent='Replaying t = '+RP.t.toFixed(2)+' of '+t1.toFixed(1)+' · Cl '+fmt(clAt(RP.t),3)+' · '+n+' frames, '+mb.toFixed(0)+' MB'+(running?(RP.playing?' · solver waits while this plays':' · solver computing'):'');
+}
+function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function draw(){
+  if(!glOK||!solver) return;
+  var dpr=Math.min(window.devicePixelRatio||1,2), w=Math.round(cv.clientWidth*dpr), h=Math.round(cv.clientHeight*dpr);
+  if(cv.width!==w||cv.height!==h){ cv.width=w; cv.height=h; }
+  nodeField();
+  gl.viewport(0,0,w,h);
+  var bc=hex(css('--body')||'#b8c2cc'); gl.clearColor(bc[0]/255,bc[1]/255,bc[2]/255,1); gl.clear(gl.COLOR_BUFFER_BIT);
+  var sx=1/view.half, sy=sx*w/h;
+  gl.uniform4f(gl.getUniformLocation(prog,'T'),sx,sy,-view.cx*sx,-view.cy*sy);
+  gl.uniform2f(gl.getUniformLocation(prog,'R'),rng[0],rng[1]);
+  gl.uniform4f(gl.getUniformLocation(prog,'K'),0,0,0,0);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D,cmapTex[$('field').value==='vort'?'div':'seq']); gl.uniform1i(gl.getUniformLocation(prog,'C'),0);
+  var la=gl.getAttribLocation(prog,'a'), ls=gl.getAttribLocation(prog,'s');
+  gl.enableVertexAttribArray(la); gl.enableVertexAttribArray(ls);
+  var lineLay=(LAY.length===2&&LAY[1].a<0.5)?0:LAY.length-1;
+  for(var li=0;li<LAY.length;li++){
+  var LL=LAY[li], lines=showMesh&&li===lineLay;
+  useBlk(LL.blk); fillVals(LL.d); curQ=LL.q; quadVals(curQ);
+  gl.uniform1f(gl.getUniformLocation(prog,'A'),LL.a); gl.enableVertexAttribArray(ls);
+  if(curQ&&qv){
+    var QG=curQ.g, n=qv.length, qp=new Float32Array(12*n), qs=new Float32Array(6*n), ql=lines?new Float32Array(16*n):null, k, o;
+    for(k=0;k<n;k++){
+      var xa=QG[3*k], ya=QG[3*k+1], xb=xa+QG[3*k+2], yb=ya+QG[3*k+2], val=qv[k]; o=12*k;
+      qp[o]=xa;qp[o+1]=ya;qp[o+2]=xb;qp[o+3]=ya;qp[o+4]=xb;qp[o+5]=yb;qp[o+6]=xa;qp[o+7]=ya;qp[o+8]=xb;qp[o+9]=yb;qp[o+10]=xa;qp[o+11]=yb;
+      o=6*k; qs[o]=qs[o+1]=qs[o+2]=qs[o+3]=qs[o+4]=qs[o+5]=val;
+      if(ql){ o=16*k; ql[o]=xa;ql[o+1]=ya;ql[o+2]=xb;ql[o+3]=ya; ql[o+4]=xb;ql[o+5]=ya;ql[o+6]=xb;ql[o+7]=yb; ql[o+8]=xb;ql[o+9]=yb;ql[o+10]=xa;ql[o+11]=yb; ql[o+12]=xa;ql[o+13]=yb;ql[o+14]=xa;ql[o+15]=ya; }
+    }
+    gl.uniform4f(gl.getUniformLocation(prog,'K'),0,0,0,0);
+    gl.bindBuffer(gl.ARRAY_BUFFER,buf.qpos); gl.bufferData(gl.ARRAY_BUFFER,qp,gl.DYNAMIC_DRAW); gl.vertexAttribPointer(la,2,gl.FLOAT,false,0,0);
+    gl.bindBuffer(gl.ARRAY_BUFFER,buf.qval); gl.bufferData(gl.ARRAY_BUFFER,qs,gl.DYNAMIC_DRAW); gl.vertexAttribPointer(ls,1,gl.FLOAT,false,0,0);
+    gl.drawArrays(gl.TRIANGLES,0,6*n);
+    if(ql){ gl.disableVertexAttribArray(ls); gl.uniform4f(gl.getUniformLocation(prog,'K'),1,1,1,0.28);
+      gl.bindBuffer(gl.ARRAY_BUFFER,buf.qlin); gl.bufferData(gl.ARRAY_BUFFER,ql,gl.DYNAMIC_DRAW); gl.vertexAttribPointer(la,2,gl.FLOAT,false,0,0); gl.drawArrays(gl.LINES,0,8*n); }
+  }
+  gl.uniform4f(gl.getUniformLocation(prog,'K'),0,0,0,0);
+  gl.bindBuffer(gl.ARRAY_BUFFER,buf.pos); gl.enableVertexAttribArray(la); gl.vertexAttribPointer(la,2,gl.FLOAT,false,0,0);
+  gl.bindBuffer(gl.ARRAY_BUFFER,buf.val); gl.bufferData(gl.ARRAY_BUFFER,nodeVal,gl.DYNAMIC_DRAW); gl.enableVertexAttribArray(ls); gl.vertexAttribPointer(ls,1,gl.FLOAT,false,0,0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,buf.tri); gl.drawElements(gl.TRIANGLES,nTri,gl.UNSIGNED_SHORT,0);
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,buf.lin);
+  if(lines){ gl.uniform4f(gl.getUniformLocation(prog,'K'),1,1,1,0.28); gl.drawElements(gl.LINES,nLine,gl.UNSIGNED_SHORT,0); }
+  if(li===LAY.length-1){ gl.uniform4f(gl.getUniformLocation(prog,'K'),0.04,0.06,0.09,1); gl.drawElements(gl.LINES,2*upBlk.Ni,gl.UNSIGNED_SHORT,2*nLine); }
+  }
+  dirty=false;
+}
+function fitView(){ view.cx=0.9; view.cy=0; view.half=2.1; dirty=true; }
+(function pointers(){
+  var P={}, lastD=0;
+  function scale(){ return 2*view.half/cv.clientWidth; }
+  cv.addEventListener('pointerdown',function(e){ cv.setPointerCapture(e.pointerId); P[e.pointerId]={x:e.clientX,y:e.clientY}; lastD=0; cv.style.cursor='grabbing'; });
+  cv.addEventListener('pointermove',function(e){
+    if(!P[e.pointerId]) return;
+    var ids=Object.keys(P), o=P[e.pointerId], dx=e.clientX-o.x, dy=e.clientY-o.y; P[e.pointerId]={x:e.clientX,y:e.clientY};
+    if(ids.length===1){ view.cx-=dx*scale(); view.cy+=dy*scale(); }
+    else if(ids.length===2){ var a=P[ids[0]], b=P[ids[1]], d=Math.hypot(a.x-b.x,a.y-b.y); if(lastD>0&&d>0) zoom(lastD/d,(a.x+b.x)/2,(a.y+b.y)/2); lastD=d; }
+    dirty=true;
+  });
+  function up(e){ delete P[e.pointerId]; lastD=0; cv.style.cursor='grab'; }
+  cv.addEventListener('pointerup',up); cv.addEventListener('pointercancel',up);
+  function zoom(f,px,py){
+    var r=cv.getBoundingClientRect(), s=scale(), wx=view.cx+(px-r.left-r.width/2)*s, wy=view.cy-(py-r.top-r.height/2)*s;
+    var nh=Math.min(120,Math.max(0.004,view.half*f)); f=nh/view.half; view.half=nh;
+    view.cx=wx+(view.cx-wx)*f; view.cy=wy+(view.cy-wy)*f; dirty=true;
+  }
+  cv.addEventListener('wheel',function(e){ e.preventDefault(); zoom(Math.exp(e.deltaY*0.0015),e.clientX,e.clientY); },{passive:false});
+})();
+
+/* ---------- small line charts ---------- */
+function nice(lo,hi,n){ var span=hi-lo, st=Math.pow(10,Math.floor(Math.log10(span/n))), e=span/n/st; st*=e>=5?10:e>=2?5:e>=1?2:1; var t=[], v=Math.ceil(lo/st)*st; for(;v<=hi+1e-9*span;v+=st) t.push(Math.abs(v)<st*1e-6?0:v); return t; }
+function tick(v){ var a=Math.abs(v); if(a===0) return '0'; if(a>=1e4||a<1e-3) return v.toExponential(0); return String(+v.toPrecision(3)); }
+function Chart(id,readId,opt){
+  var c=$(id), self=this; this.c=c; this.opt=opt; this.hx=null; this.readId=readId;
+  c.addEventListener('pointermove',function(e){ var r=c.getBoundingClientRect(); self.hx=(e.clientX-r.left)/r.width; self.draw(); });
+  c.addEventListener('pointerleave',function(){ self.hx=null; self.draw(); });
+}
+Chart.prototype.set=function(x,y){ this.x=x; this.y=y; this.draw(); };
+Chart.prototype.draw=function(){
+  var c=this.c, o=this.opt, dpr=Math.min(window.devicePixelRatio||1,2), W=c.clientWidth, Hh=c.clientHeight;
+  if(c.width!==Math.round(W*dpr)||c.height!==Math.round(Hh*dpr)){ c.width=Math.round(W*dpr); c.height=Math.round(Hh*dpr); }
+  var g=c.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,Hh);
+  var x=this.x||[], y=this.y||[], n=Math.min(x.length,y.length), ink=css('--muted'), line=css('--line'), ser=css('--series');
+  var L=44,R=8,T=6,B=20, pw=W-L-R, ph=Hh-T-B, i;
+  g.font='11px "IBM Plex Mono",monospace'; g.fillStyle=ink;
+  if(n<2){ g.textAlign='center'; g.fillText('Waiting for data',L+pw/2,T+ph/2); $(this.readId).textContent=''; return; }
+  var x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity, s=o.tail&&n>40?Math.floor(n*0.15):0;
+  for(i=0;i<n;i++){ if(x[i]<x0)x0=x[i]; if(x[i]>x1)x1=x[i]; }
+  for(i=s;i<n;i++){ if(y[i]<y0)y0=y[i]; if(y[i]>y1)y1=y[i]; }
+  if(!(x1>x0)) x1=x0+1; var pad=(y1-y0)*0.08||Math.max(Math.abs(y0)*0.05,1e-3); y0-=pad; y1+=pad;
+  var X=function(v){return L+(v-x0)/(x1-x0)*pw;}, Y=function(v){return T+(y1-v)/(y1-y0)*ph;};
+  g.strokeStyle=line; g.lineWidth=1; g.textAlign='right'; g.textBaseline='middle';
+  nice(y0,y1,4).forEach(function(t){ var yy=Math.round(Y(t))+0.5; g.beginPath(); g.moveTo(L,yy); g.lineTo(L+pw,yy); g.stroke(); g.fillText(tick(t),L-5,yy); });
+  g.textAlign='center'; g.textBaseline='top';
+  nice(x0,x1,4).forEach(function(t){ g.fillText(tick(t),X(t),T+ph+5); });
+  g.save(); g.beginPath(); g.rect(L,T,pw,ph); g.clip();
+  g.strokeStyle=ser; g.fillStyle=ser; g.lineWidth=2; g.lineJoin='round';
+  if(o.dots){ for(i=0;i<n;i++){ g.beginPath(); g.arc(X(x[i]),Y(y[i]),1.8,0,6.3); g.fill(); } }
+  else { var st=Math.max(1,Math.floor(n/(pw*1.5))); g.beginPath(); for(i=0;i<n;i+=st){ if(i===0) g.moveTo(X(x[i]),Y(y[i])); else g.lineTo(X(x[i]),Y(y[i])); } g.lineTo(X(x[n-1]),Y(y[n-1])); g.stroke();
+    g.beginPath(); g.arc(X(x[n-1]),Y(y[n-1]),3.5,0,6.3); g.fill(); }
+  g.restore();
+  if(this.mark!=null&&this.mark>=x0&&this.mark<=x1){ g.strokeStyle=css('--ink'); g.lineWidth=1.5; g.beginPath(); g.moveTo(X(this.mark),T); g.lineTo(X(this.mark),T+ph); g.stroke(); }
+  var k=n-1;
+  if(this.hx!==null){ var xv=x0+(this.hx*W-L)/pw*(x1-x0), best=Infinity; for(i=0;i<n;i++){ var d=Math.abs(x[i]-xv); if(d<best){best=d;k=i;} }
+    g.strokeStyle=ink; g.lineWidth=1; g.beginPath(); g.moveTo(Math.round(X(x[k]))+0.5,T); g.lineTo(Math.round(X(x[k]))+0.5,T+ph); g.stroke();
+    g.fillStyle=ser; g.beginPath(); g.arc(X(x[k]),Y(y[k]),4,0,6.3); g.fill(); }
+  $(this.readId).textContent=(this.hx!==null?o.xn+' '+fmt(x[k],3)+' · ':'')+fmt(o.sign?-y[k]*o.sign*-1:y[k],o.dec||4);
+};
+var charts={
+  cl:new Chart('c_cl','h_cl',{xn:'t',tail:true}), cd:new Chart('c_cd','h_cd',{xn:'t',tail:true}),
+  res:new Chart('c_res','h_res',{xn:'t',dec:2}), cp:new Chart('c_cp','h_cp',{xn:'x/c',dots:true,dec:3}), cf:new Chart('c_cf','h_cf',{xn:'x/c',dots:true,dec:5})
+};
+function amrInfo(){ if(!solver||solver.kind!=='hybrid') return ''; var q=solver.info(); return ' · '+q.columns+' O-layer columns · '+q.squares+' squares, finest '+q.minSize.toPrecision(2)+' c'+(q.tauScale>1.01?', threshold raised ×'+q.tauScale.toFixed(1)+' to stay under the limit':''); }
+function updateUI(){
+  if(!solver) return;
+  var S=solver.state, c=solver.ctl, q=dim.q*dim.chord;
+  $('tcl').textContent=fmt(S.cl,4); $('tcd').textContent=fmt(S.cd,5); $('tcm').textContent=fmt(S.cm,4);
+  $('tclf').textContent=eng(S.cl*q)+' N/m'; $('tcdf').textContent='pressure '+fmt(S.cdp,4)+' · friction '+fmt(S.cdf,4);
+  $('tt').textContent=c.unsteady?S.time.toFixed(2):String(S.step);
+  $('tts').textContent=c.unsteady?'step '+S.step+' · '+eng(S.time*dim.chord/dim.U)+' s':'pseudo-time';
+  var st=strouhal(); $('tst').textContent=isFinite(st)?st.toFixed(3):'–';
+  $('typ').textContent=fmt(S.ypMax,2);
+  var pill=$('pill');
+  if(S.diverged){ pill.className='pill bad'; pill.textContent='Diverged'; }
+  else if(running){ pill.className='pill run'; pill.textContent='Running'; }
+  else { pill.className='pill idle'; pill.textContent='Paused'; }
+  $('status').textContent=S.diverged?'The solution diverged. Lower the time step or CFL number, or coarsen the target y⁺, then rebuild.':
+    (c.unsteady?'Inner iteration '+S.inner+' of '+c.maxInner+' · residual drop '+fmt(S.resRel,3)+' · last step used '+(S.lastInner||0):'Iteration '+S.step)+' · residual '+S.res.toExponential(2)+(S.limited?' · '+S.limited+' cells limited':'')+amrInfo();
+  charts.cl.set(H.t,H.cl); charts.cd.set(H.t,H.cd);
+  charts.res.set(H.t,H.res.map(function(v){return Math.log10(Math.max(v,1e-300));}));
+  var w=solver.wall; charts.cp.set(Array.prototype.slice.call(w.x),Array.prototype.map.call(w.cp,function(v){return -v;})); charts.cf.set(Array.prototype.slice.call(w.x),Array.prototype.slice.call(w.cf));
+}
+function frame(now){
+  requestAnimationFrame(frame);
+  if(running&&solver&&!exporting&&!(RP.on&&RP.playing)){
+    var t0=performance.now(), any=false;
+    do{ if(solver.iterate()){ record(); } any=true; }while(performance.now()-t0<22&&!solver.state.diverged);
+    if(solver.state.diverged) setRunning(false);
+    if(any&&now-lastDraw>120) dirty=true;
+  }
+  var pt=window.__pt, q0=pt?performance.now():0;
+  if(solver){ replayTick(now); RP.last=now; }
+  var q1=pt?performance.now():0;
+  if(dirty&&solver){ if(!running&&!RP.on) solver.refresh(); draw(); lastDraw=now; }
+  if(pt){ pt.tick+=q1-q0; pt.draw+=performance.now()-q1; pt.n++; }
+  if(now-lastUI>400){ updateUI(); lastUI=now; }
+}
+
+/* ---------- wiring ---------- */
+function copy(text){
+  var box=$('csvbox');
+  function fallback(){ box.value=text; box.style.display='block'; box.focus(); box.select(); $('copymsg').textContent='Clipboard access was refused. The data is in the box below: select all and copy.'; }
+  try{ navigator.clipboard.writeText(text).then(function(){ $('copymsg').textContent='Copied '+text.split('\n').length+' lines.'; },fallback); }catch(e){ fallback(); }
+}
+function csvHist(){ var r=['step,t_Uinf_over_c,cl,cd,cm,residual']; for(var i=0;i<H.t.length;i++) r.push([H.step[i],H.t[i],H.cl[i],H.cd[i],H.cm[i],H.res[i]].join(',')); return r.join('\n'); }
+function csvSurf(){ var w=solver.wall,r=['x_over_c,y_over_c,cp,cf,yplus']; for(var i=0;i<w.x.length;i++) r.push([w.x[i],w.y[i],w.cp[i],w.cf[i],w.yplus[i]].join(',')); return r.join('\n'); }
+function dlCsv(name,text){ if(!saver) return; saver.save({filename:name,data:text}).then(function(){ $('copymsg').textContent='Saved '+name+'.'; },function(e){ $('copymsg').textContent=e&&e.code==='declined'?'Save cancelled.':'Saving is unavailable in this view.'; }); }
+$('copyh').addEventListener('click',function(){ copy(csvHist()); });
+$('copys').addEventListener('click',function(){ if(solver) copy(csvSurf()); });
+$('dlh').addEventListener('click',function(){ dlCsv('force-history.csv',csvHist()); });
+$('dls').addEventListener('click',function(){ if(solver) dlCsv('surface-data.csv',csvSurf()); });
+$('run').addEventListener('click',function(){ if(!solver&&!build()) return; setRunning(!running); });
+$('step').addEventListener('click',function(){ if(!solver) return; setRunning(false); for(var i=0;i<400;i++){ if(solver.iterate()){ record(); break; } if(solver.state.diverged) break; } dirty=true; lastUI=0; });
+$('fit').addEventListener('click',fitView);
+$('rmode').addEventListener('click',function(){ if(!RP.on&&FR.length<2){ $('rinfo').textContent='Nothing to replay yet. Run an unsteady case for a few time steps first.'; return; } setReplay(!RP.on); });
+$('rplay').addEventListener('click',function(){ RP.playing=!RP.playing; this.textContent=RP.playing?'Pause replay':'Play'; });
+$('rpos').addEventListener('input',function(){ if(FR.length<2) return; var t0=FR[0].t,t1=FR[FR.length-1].t; RP.t=t0+(t1-t0)*this.value/1000; RP.playing=false; $('rplay').textContent='Play'; dirty=true; charts.cl.mark=charts.cd.mark=RP.t; charts.cl.draw(); charts.cd.draw(); });
+$('rrange').addEventListener('change',function(){ if(RP.on) RP.t=replayStart(); });
+$('meshbtn').addEventListener('click',function(){ showMesh=!showMesh; this.setAttribute('aria-pressed',String(showMesh)); dirty=true; });
+$('field').addEventListener('change',function(){ dirty=true; });
+$('setup').addEventListener('submit',function(e){ e.preventDefault(); var was=running; setRunning(false); if(build()) setRunning(was); });
+$('keep').addEventListener('click',keepFlow);
+$('preset').addEventListener('change',function(){ applyPreset(this.value); var was=running; setRunning(false); if(build()){ fitView(); setRunning(was); } });
+['gtype','reov','pinf','mach','tinf','alpha','chord','reval','model'].forEach(function(id){ $(id).addEventListener('input',syncVis); $(id).addEventListener('change',syncVis); });
+$('mtype').addEventListener('change',syncVis);
+$('sensor').addEventListener('change',function(){ $('thr').value=this.value==='vort'?0.05:0.03; applyCtl(); });
+['thr','lev','aevery'].forEach(function(id){ $(id).addEventListener('change',applyCtl); });
+['mode','dt','inner','tol','cfl'].forEach(function(id){ $(id).addEventListener('change',applyCtl); });
+window.addEventListener('resize',function(){ dirty=true; lastUI=0; });
+new MutationObserver(function(){ dirty=true; lastUI=0; }).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+$('res').value=(window.innerWidth<700)?'112x52':'160x72'; if(window.innerWidth<700){ $('maxq').value=9000; $('wake').value=5; }
+(function(){ var n=navigator.hardwareConcurrency||0, iso=!!self.crossOriginIsolated&&typeof SharedArrayBuffer!=='undefined'; $('hw').textContent='This device reports '+(n||'an unknown number of')+' processor threads. Shared memory between threads is '+(iso?'available':'not available')+' in this view; the solver currently runs on one thread.'; })();
+(function gpuCheck(){
+  var el=$('hw2'), say=function(t){ el.textContent=t; };
+  if(!navigator.gpu){ say('Graphics-processor computing (WebGPU) is not available in this view.'); return; }
+  var info='';
+  navigator.gpu.requestAdapter().then(function(ad){
+    if(!ad) throw new Error('no adapter was offered');
+    var ai=ad.info||{}; info=[ai.vendor,ai.architecture||ai.device].filter(Boolean).join(' ')||'unnamed adapter';
+    return ad.requestDevice().then(function(dev){
+      // run a real compute pass: double 1024 numbers on the GPU and read them back
+      var n=1024, src=new Float32Array(n); for(var i=0;i<n;i++) src[i]=i;
+      var buf=dev.createBuffer({size:4*n,usage:GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_SRC|GPUBufferUsage.COPY_DST});
+      var out=dev.createBuffer({size:4*n,usage:GPUBufferUsage.MAP_READ|GPUBufferUsage.COPY_DST});
+      dev.queue.writeBuffer(buf,0,src);
+      var mod=dev.createShaderModule({code:'@group(0) @binding(0) var<storage,read_write> d: array<f32>; @compute @workgroup_size(64) fn main(@builtin(global_invocation_id) g: vec3<u32>){ if(g.x<arrayLength(&d)){ d[g.x]=d[g.x]*2.0; } }'});
+      var pipe=dev.createComputePipeline({layout:'auto',compute:{module:mod,entryPoint:'main'}});
+      var bind=dev.createBindGroup({layout:pipe.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:buf}}]});
+      var t0=performance.now(), enc=dev.createCommandEncoder(), pass=enc.beginComputePass();
+      pass.setPipeline(pipe); pass.setBindGroup(0,bind); pass.dispatchWorkgroups(n/64); pass.end();
+      enc.copyBufferToBuffer(buf,0,out,0,4*n); dev.queue.submit([enc.finish()]);
+      return out.mapAsync(GPUMapMode.READ).then(function(){
+        var r=new Float32Array(out.getMappedRange()), ok=true; for(var i=0;i<n;i++) if(r[i]!==2*i){ ok=false; break; }
+        var ms=performance.now()-t0, L=dev.limits;
+        say('Graphics-processor computing (WebGPU) is '+(ok?'available and a test computation ran correctly':'present, but a test computation returned wrong values')+' ('+info+'; round trip '+ms.toFixed(0)+' ms; storage buffers up to '+Math.round(L.maxStorageBufferBindingSize/1048576)+' MB; '+L.maxStorageBuffersPerShaderStage+' buffers per shader'+(dev.features.has('shader-f16')?'; half-float shaders':'')+'). It computes in single precision only.');
+        out.unmap();
+      });
+    });
+  }).catch(function(e){ say('Graphics-processor computing (WebGPU) is exposed in this view but could not be used: '+(e&&e.message?e.message:e)+'.'); });
+})();
+glInit(); applyPreset('cylT');
+if(build()) setRunning(true);
+requestAnimationFrame(frame);
+/* ---------- export: GIF (encoded here) and video (browser recorder), saved through the host's download prompt ---------- */
+var saver=null, exporting=false;
+function xmsg(t){ var e=$('xmsg'); e.hidden=!t; e.textContent=t||''; }
+function initSave(){
+  var ok=function(d){ if(!d) return; saver=d; $('dlh').hidden=false; $('dls').hidden=false; $('xgif').hidden=false; if(window.MediaRecorder&&cv.captureStream) $('xvid').hidden=false; };
+  if(window.__testSave){ ok(window.__testSave); return; }
+  if(window.claude&&window.claude.use){ try{ window.claude.use('downloads').then(ok,function(){}); }catch(e){} return; }
+  ok({save:function(r){                         // ordinary website: hand the file to the browser's own download
+    var blob=r.data instanceof Blob?r.data:new Blob([r.data]), url=URL.createObjectURL(blob), a=document.createElement('a');
+    a.href=url; a.download=r.filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function(){ URL.revokeObjectURL(url); },4000);
+    return Promise.resolve({status:'saved'}); }});
+}
+function saveFile(name,data){
+  return saver.save({filename:name,data:data}).then(function(){ xmsg('Saved '+name+'.'); },function(e){
+    var c=e&&e.code; xmsg(c==='declined'?'Save cancelled.':c==='too_large'?'That file is too large to save here. Try a shorter range or a faster replay speed.':c==='rate_limited'?'A save prompt is already open. Answer it, then try again.':'Saving is unavailable in this view.'); });
+}
+function exportRange(){ var t1=FR[FR.length-1].t, t0=replayStart(); return {t0:t0,t1:t1}; }
+function lzw(idx,out){                         // GIF LZW, 8-bit codes; out is a plain byte array
+  var tab=lzw.tab||(lzw.tab=new Int32Array(1<<20)), gen=(lzw.gen||0)+1, next=258, size=9, cur=0, bits=0, blk=[], n=idx.length, i, pre, k, key, e;
+  if(gen>500000){ tab.fill(0); gen=1; }
+  function emit(c){ cur|=c<<bits; bits+=size; while(bits>=8){ blk.push(cur&255); cur>>>=8; bits-=8; if(blk.length===255){ out.push(255); for(var q=0;q<255;q++) out.push(blk[q]); blk.length=0; } } }
+  out.push(8); emit(256); pre=idx[0];
+  for(i=1;i<n;i++){
+    k=idx[i]; key=(pre<<8)|k; e=tab[key];
+    if((e>>>12)===gen){ pre=e&4095; continue; }
+    emit(pre);
+    if(next<4096){ tab[key]=(gen<<12)|next; next++; if(next>(1<<size)&&size<12) size++; }
+    else { emit(256); gen++; next=258; size=9; }
+    pre=k;
+  }
+  emit(pre); emit(257); if(bits>0) blk.push(cur&255);
+  if(blk.length){ out.push(blk.length); for(i=0;i<blk.length;i++) out.push(blk[i]); }
+  out.push(0); lzw.gen=gen;
+}
+function exportGif(){
+  if(exporting||FR.length<2||!glOK) return;
+  exporting=true; var was=running; setRunning(false); if(!RP.on) setReplay(true); RP.playing=false; $('rplay').textContent='Play';
+  var rg=exportRange(), speed=parseFloat($('rspeed').value), fps=15, nfr=Math.max(2,Math.round((rg.t1-rg.t0)/speed*fps));
+  var delay=7; if(nfr>300){ nfr=300; }
+  var dtf=(rg.t1-rg.t0)/(nfr-1), kind=$('field').value, stops=kind==='vort'?DIV:SEQ, rampd=ramp(stops), pal=new Uint8Array(768), i;
+  for(i=0;i<250;i++){ var s=Math.round(i*255/249)*4; pal[3*i]=rampd[s]; pal[3*i+1]=rampd[s+1]; pal[3*i+2]=rampd[s+2]; }
+  var bc=hex(css('--body')||'#b8c2cc'), extra=[bc,[10,15,23],[255,255,255],[128,128,128],[60,70,80],[200,205,210]];
+  for(i=0;i<6;i++){ pal[3*(250+i)]=extra[i][0]; pal[3*(250+i)+1]=extra[i][1]; pal[3*(250+i)+2]=extra[i][2]; }
+  var lut=new Int16Array(32768).fill(-1);
+  function nearest(r,g,b){ var q=((r>>3)<<10)|((g>>3)<<5)|(b>>3), v=lut[q]; if(v>=0) return v; var best=1e9,bi=0; for(var j=0;j<256;j++){ var dr=r-pal[3*j],dg=g-pal[3*j+1],db=b-pal[3*j+2],d=dr*dr+dg*dg+db*db; if(d<best){best=d;bi=j;} } lut[q]=bi; return bi; }
+  draw();
+  var W=cv.width, Hh=cv.height, f=Math.max(1,Math.ceil(W/480)), gw=Math.floor(W/f), gh=Math.floor(Hh/f), px=new Uint8Array(W*Hh*4), idx=new Uint8Array(gw*gh);
+  var out=[71,73,70,56,57,97, gw&255,gw>>8, gh&255,gh>>8, 0xF7,0,0];
+  for(i=0;i<768;i++) out.push(pal[i]);
+  out.push(0x21,0xFF,11,78,69,84,83,67,65,80,69,50,46,48,3,1,0,0,0);
+  var fi=0;
+  function step(){
+    try{
+      RP.t=rg.t0+fi*dtf; draw(); gl.readPixels(0,0,W,Hh,gl.RGBA,gl.UNSIGNED_BYTE,px);
+      for(var y=0;y<gh;y++) for(var x=0;x<gw;x++){ var r=0,g=0,b=0; for(var yy=0;yy<f;yy++){ var o=((Hh-1-y*f-yy)*W+x*f)*4; for(var xx=0;xx<f;xx++,o+=4){ r+=px[o]; g+=px[o+1]; b+=px[o+2]; } } var nn=f*f; idx[y*gw+x]=nearest(r/nn|0,g/nn|0,b/nn|0); }
+      out.push(0x21,0xF9,4,0,delay,0,0,0, 0x2C,0,0,0,0, gw&255,gw>>8, gh&255,gh>>8, 0);
+      lzw(idx,out); fi++;
+      xmsg('Encoding GIF, frame '+fi+' of '+nfr);
+      if(fi<nfr){ setTimeout(step,0); return; }
+      out.push(0x3B);
+      var data=new Uint8Array(out); exporting=false; dirty=true; if(was) setRunning(true);
+      xmsg('GIF ready, '+(data.length/1048576).toFixed(1)+' MB. Confirm the save prompt.');
+      saveFile('flow-'+kind+'.gif',new Blob([data]));
+    }catch(e){ exporting=false; xmsg('GIF export failed: '+e.message); if(was) setRunning(true); }
+  }
+  step();
+}
+function exportVideo(){
+  if(exporting||FR.length<2||!glOK) return;
+  var types=['video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp9','video/webm'], mime='';
+  for(var i=0;i<types.length;i++){ if(MediaRecorder.isTypeSupported(types[i])){ mime=types[i]; break; } }
+  if(!mime){ xmsg('This browser cannot record video. Use Save GIF.'); return; }
+  var rec, chunks=[], rg=exportRange(), was=running, kind=$('field').value;
+  try{ rec=new MediaRecorder(cv.captureStream(30),{mimeType:mime,videoBitsPerSecond:6e6}); }catch(e){ xmsg('This browser cannot record the view. Use Save GIF.'); return; }
+  exporting=true; setRunning(false); if(!RP.on) setReplay(true);
+  rec.ondataavailable=function(e){ if(e.data&&e.data.size) chunks.push(e.data); };
+  rec.onstop=function(){ exporting=false; RP.vidEnd=null; if(was) setRunning(true); var ext=mime.indexOf('mp4')>=0?'mp4':'webm', blob=new Blob(chunks);
+    if(!blob.size){ xmsg('The recorder produced no data. Use Save GIF.'); return; }
+    xmsg('Video ready, '+(blob.size/1048576).toFixed(1)+' MB. Confirm the save prompt.'); saveFile('flow-'+kind+'.'+ext,blob); };
+  RP.t=rg.t0; RP.playing=true; $('rplay').textContent='Pause replay'; RP.vidEnd=function(){ RP.playing=false; $('rplay').textContent='Play'; setTimeout(function(){ try{ rec.stop(); }catch(e){} },150); };
+  var secs=(rg.t1-rg.t0)/parseFloat($('rspeed').value); xmsg('Recording '+secs.toFixed(0)+' s of replay in real time. Keep this tab in view.');
+  dirty=true; rec.start(200);
+}
+$('xgif').addEventListener('click',exportGif); $('xvid').addEventListener('click',exportVideo);
+initSave();
+window.__cfd={layers:function(){return LAY.length;},get solver(){return solver;},H:H,get frames(){return FR.length;},RP:RP};
+})();
+</script>
+</body>
+</html>
